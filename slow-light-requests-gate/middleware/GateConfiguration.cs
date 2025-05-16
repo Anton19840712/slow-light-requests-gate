@@ -13,7 +13,7 @@ public class GateConfiguration
 	/// </summary>
 	public async Task<(string HttpUrl, string HttpsUrl)> ConfigureDynamicGateAsync(string[] args, WebApplicationBuilder builder)
 	{
-		var configFilePath = args.FirstOrDefault(a => a.StartsWith("--config="))?.Substring(9) ?? "./configs/rest.json";
+		var configFilePath = args.FirstOrDefault(a => a.StartsWith("--config="))?.Substring(9) ?? "rest.json";
 		var config = LoadConfiguration(configFilePath);
 
 		var configType = config["type"]?.ToString() ?? config["Type"]?.ToString();
@@ -49,7 +49,7 @@ public class GateConfiguration
 			}
 			else
 			{
-				var basePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".."));
+				var basePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), ".."));
 				fullPath = Path.GetFullPath(Path.Combine(basePath, configFilePath));
 			}
 

@@ -22,7 +22,7 @@ public class HttpProtocolController : ControllerBase
 	{
 		_logger = logger;
 		_headerValidationService = headerValidationService;
-		_messageProcessingService = messageProcessingService;ы
+		_messageProcessingService = messageProcessingService;
 		_configuration = configuration;
 	}
 

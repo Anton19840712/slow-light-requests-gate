@@ -1,0 +1,7 @@
+{
+  "Type": "rest",
+  "CompanyName": "RestCompany",
+  "Host": "127.0.0.1",
+  "Port": "5000",
+  "Validate": true
+}
