@@ -136,6 +136,24 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 
 	public async Task SaveMessageAsync(T message) => await InsertAsync(message);
 
+	public async Task UpdateMessageAsync(T message)
+	{
+		if (message is OutboxMessage outboxMessage)
+		{
+			const string sql = @"
+				UPDATE outbox_messages 
+				SET is_processed = @IsProcessed, processed_at = @ProcessedAt 
+				WHERE id = @Id";
+
+			using var connection = CreateConnection();
+			await _retryPolicy.ExecuteAsync(() => connection.ExecuteAsync(sql, outboxMessage));
+		}
+		else
+		{
+			throw new InvalidOperationException("UpdateMessageAsync поддерживает только OutboxMessage");
+		}
+	}
+
 	private string GenerateInsertSql(T entity)
 	{
 		var props = typeof(T).GetProperties()

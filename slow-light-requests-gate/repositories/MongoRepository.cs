@@ -145,5 +145,22 @@ namespace lazy_light_requests_gate.repositories
 		{
 			await _collection.InsertOneAsync(message);
 		}
+
+		public async Task UpdateMessageAsync(T message)
+		{
+			if (message is OutboxMessage outboxMessage)
+			{
+				var filter = Builders<T>.Filter.Eq("Id", outboxMessage.Id);
+				var update = Builders<T>.Update
+					.Set("IsProcessed", outboxMessage.IsProcessed)
+					.Set("ProcessedAt", outboxMessage.ProcessedAt);
+
+				await _collection.UpdateOneAsync(filter, update);
+			}
+			else
+			{
+				throw new InvalidOperationException("UpdateMessageAsync поддерживает только OutboxMessage");
+			}
+		}
 	}
 }

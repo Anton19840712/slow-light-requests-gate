@@ -8,5 +8,6 @@
 		Task MarkMessageAsProcessedAsync(Guid messageId);
 		Task<int> DeleteOldMessagesAsync(TimeSpan olderThan);
 		Task SaveMessageAsync(T message);
+		Task UpdateMessageAsync(T message);
 	}
 }

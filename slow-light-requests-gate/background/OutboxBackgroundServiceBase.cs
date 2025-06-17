@@ -38,36 +38,49 @@ namespace lazy_light_requests_gate.background
 			{
 				try
 				{
-					var messages = await GetUnprocessedMessagesAsync();
-
-					foreach (var message in messages)
+					var unprocessedMessages = await GetUnprocessedMessagesAsync();
+					if (unprocessedMessages.Any())
 					{
-						_logger.LogInformation("");
-						_logger.LogInformation($"Публикация сообщения: {message.Payload}");
+						_logger.LogInformation($"{GetType().Name}: найдено {unprocessedMessages.Count()} неотправленных сообщений.");
 
-						await _rabbitMqService.PublishMessageAsync(
-							message.InQueue,
-							message.RoutingKey,
-							message.Payload);
+						foreach (var message in unprocessedMessages)
+						{
+							try
+							{
+								// Публикуем сообщение в очередь_in
+								await _rabbitMqService.PublishMessageAsync(
+									message.InQueue,
+									message.RoutingKey ?? message.InQueue,
+									message.Payload);
 
-						await MarkMessageAsProcessedAsync(message.Id);
+								// Помечаем сообщение как обработанное
+								message.IsProcessed = true;
+								message.ProcessedAt = DateTime.UtcNow;
+								await _outboxRepository.UpdateMessageAsync(message);
 
-						_logger.LogInformation("");
-						_logger.LogInformation($"Обработано в Outbox: {message.Payload}");
+								_logger.LogInformation($"{GetType().Name}: сообщение {message.Id} успешно отправлено в очередь {message.InQueue}.");
+							}
+							catch (Exception ex)
+							{
+								_logger.LogError(ex, $"{GetType().Name}: ошибка при отправке сообщения {message.Id} в очередь {message.InQueue}.");
+							}
+						}
+					}
+					else
+					{
+						_logger.LogInformation($"{GetType().Name}: новых сообщений для отправки не найдено.");
 					}
 				}
 				catch (Exception ex)
 				{
-					_logger.LogError(ex, "Ошибка при обработке Outbox.");
+					_logger.LogError(ex, $"{GetType().Name}: ошибка при сканировании outbox таблицы.");
 				}
 
-				await Task.Delay(2000, token);
+				await Task.Delay(TimeSpan.FromSeconds(5), token);
 			}
 		}
 
-
-
-		protected virtual async Task<IEnumerable<OutboxMessage>> GetUnprocessedMessagesAsync()
+		private async Task<IEnumerable<OutboxMessage>> GetUnprocessedMessagesAsync()
 		{
 			return await _outboxRepository.GetUnprocessedMessagesAsync();
 		}

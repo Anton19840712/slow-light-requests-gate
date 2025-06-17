@@ -30,5 +30,7 @@
 		protected abstract Task<IEnumerable<T>> GetUnprocessedMessagesInternalAsync();
 		protected abstract Task MarkMessageAsProcessedInternalAsync(Guid messageId);
 		protected abstract Task<int> DeleteOldMessagesInternalAsync(TimeSpan olderThan);
+
+		public abstract Task UpdateMessageAsync(T message);
 	}
 }
