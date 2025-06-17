@@ -1,4 +1,5 @@
-﻿using lazy_light_requests_gate.background;
+﻿using lazy_light_requests_gate.entities;
+using lazy_light_requests_gate.background;
 using lazy_light_requests_gate.repositories;
 
 namespace lazy_light_requests_gate.middleware
@@ -19,7 +20,7 @@ namespace lazy_light_requests_gate.middleware
 			}
 			else // mongo по умолчанию
 			{
-				services.AddHostedService<QueueListenerRabbitMongoBackgroundService>();
+				services.AddHostedService<QueueListenerBackgroundServiceBase<IMongoRepository<QueuesEntity>>>();
 				services.AddHostedService<OutboxBackgroundServiceBase<IMongoRepository<OutboxMessage>>>();
 			}
 
