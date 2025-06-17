@@ -6,7 +6,7 @@ namespace lazy_light_requests_gate.middleware
 	{
 		public static IServiceCollection AddMongoDbRepositoriesServices(this IServiceCollection services, IConfiguration configuration)
 		{
-			services.AddSingleton(typeof(IMongoRepository<>), typeof(MongoRepository<>));
+			services.AddScoped(typeof(IMongoRepository<>), typeof(MongoRepository<>));
 			return services;
 		}
 	}

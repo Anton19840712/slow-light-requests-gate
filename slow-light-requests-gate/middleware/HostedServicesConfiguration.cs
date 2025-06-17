@@ -1,6 +1,5 @@
-﻿using lazy_light_requests_gate.entities;
-using lazy_light_requests_gate.background;
-using lazy_light_requests_gate.repositories;
+﻿using lazy_light_requests_gate.background;
+using lazy_light_requests_gate.services;
 
 namespace lazy_light_requests_gate.middleware
 {
@@ -15,13 +14,15 @@ namespace lazy_light_requests_gate.middleware
 
 			if (database == "postgres")
 			{
+				services.AddScoped(typeof(ICleanupService<>), typeof(CleanupService<>));
 				services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
-				services.AddHostedService<OutboxBackgroundServiceBase<IPostgresRepository<OutboxMessage>>>();
+				services.AddHostedService<OutboxBackgroundServicePostgres>();
 			}
 			else // mongo по умолчанию
 			{
-				services.AddHostedService<QueueListenerBackgroundServiceBase<IMongoRepository<QueuesEntity>>>();
-				services.AddHostedService<OutboxBackgroundServiceBase<IMongoRepository<OutboxMessage>>>();
+				services.AddScoped(typeof(ICleanupService<>), typeof(CleanupService<>));
+				services.AddHostedService<QueueListenerBackgroundServiceMongo>();
+				services.AddHostedService<OutboxBackgroundServiceMongo>();
 			}
 
 			return services;

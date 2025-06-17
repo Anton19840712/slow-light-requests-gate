@@ -6,7 +6,7 @@ namespace lazy_light_requests_gate.middleware
 	{
 		public static IServiceCollection AddPostgresDbRepositoriesServices(this IServiceCollection services, IConfiguration configuration)
 		{
-			services.AddSingleton(typeof(IPostgresRepository<>), typeof(PostgresRepository<>));
+			services.AddScoped(typeof(IPostgresRepository<>), typeof(PostgresRepository<>));
 			return services;
 		}
 	}
