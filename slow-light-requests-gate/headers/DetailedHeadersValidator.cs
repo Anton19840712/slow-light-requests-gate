@@ -15,17 +15,6 @@ namespace lazy_light_requests_gate.headers
 		{
 			var errors = new List<string>();
 
-			// 1. Проверяем наличие заголовка Authorization
-			if (!headers.TryGetValue("Authorization", out var authHeader) || string.IsNullOrWhiteSpace(authHeader))
-			{
-				errors.Add("Missing Authorization header");
-			}
-			else if (!authHeader.ToString().StartsWith("Bearer "))
-			{
-				errors.Add("Authorization header must start with 'Bearer '");
-			}
-
-			// 2. Проверяем Content-Type
 			if (!headers.TryGetValue("Content-Type", out var contentType) || contentType != "application/json")
 			{
 				errors.Add("Invalid or missing Content-Type header. Expected 'application/json'");

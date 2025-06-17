@@ -18,6 +18,7 @@ public class HeaderValidationService : IHeaderValidationService
 
 	public async Task<bool> ValidateHeadersAsync(IHeaderDictionary headers)
 	{
+		// если в заголовках в наличии ключ X-Use-Detailed-Validation установлен в true - тогда дальнейшая работа сервера будет происходить по детальному сценарию валидации для ответов:
 		bool useDetailedValidation = headers.ContainsKey("X-Use-Detailed-Validation");
 		IHeadersValidator validator = useDetailedValidation ? _detailedValidator : _simpleValidator;
 
@@ -35,5 +36,4 @@ public class HeaderValidationService : IHeaderValidationService
 		_logger.LogInformation("Валидация заголовков успешна.");
 		return true;
 	}
-
 }

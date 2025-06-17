@@ -7,8 +7,11 @@
 		/// </summary>
 		public static IServiceCollection AddHostedServices(this IServiceCollection services)
 		{
-			services.AddHostedService<QueueListenerBackgroundService>();
-			services.AddHostedService<OutboxMongoBackgroundService>();
+			//services.AddHostedService<QueueListenerRabbitMongoBackgroundService>();
+			//services.AddHostedService<OutboxMongoBackgroundService>();
+
+			services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
+			services.AddHostedService<OutboxPostgresBackgroundService>();
 
 			return services;
 		}

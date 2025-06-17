@@ -9,7 +9,8 @@ namespace lazy_light_requests_gate.middleware
 		/// </summary>
 		public static IServiceCollection AddMessageServingServices(this IServiceCollection services)
 		{
-			services.AddTransient<IMessageProcessingService, MessageProcessingService>();
+			//services.AddTransient<IMessageProcessingService, MessageProcessingMongoService>();
+			services.AddTransient<IMessageProcessingService, MessageProcessingPostgresService>();
 
 			return services;
 		}

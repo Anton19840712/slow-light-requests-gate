@@ -6,7 +6,7 @@ namespace lazy_light_requests_gate.headers
 	{
 		public Task<ResponseIntegration> ValidateHeadersAsync(IHeaderDictionary headers)
 		{
-			// Минимальная проверка: наличие X-Custom-Header
+			// Минимальная проверка: просто наличие или отсутствие X-Custom-Header
 			if (!headers.ContainsKey("X-Custom-Header"))
 			{
 				return Task.FromResult(new ResponseIntegration

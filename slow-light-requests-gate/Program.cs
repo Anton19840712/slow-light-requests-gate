@@ -1,4 +1,7 @@
+using System.Text;
 using lazy_light_requests_gate.middleware;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 Console.Title = "slow & light dynamic gate";
@@ -17,10 +20,14 @@ try
 	var gateConfigurator = app.Services.GetRequiredService<GateConfiguration>();
 	var (httpUrl, httpsUrl) = await gateConfigurator.ConfigureDynamicGateAsync(args, builder);
 
+	await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(app.Configuration);
+
 	// Применяем настройки приложения
 	ConfigureApp(app, httpUrl, httpsUrl);
 
 	// Запускаем
+	Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
 	await app.RunAsync();
 }
 catch (Exception ex)
@@ -35,7 +42,6 @@ finally
 
 static void ConfigureServices(WebApplicationBuilder builder)
 {
-
 	var configuration = builder.Configuration;
 
 	var services = builder.Services;
@@ -46,14 +52,38 @@ static void ConfigureServices(WebApplicationBuilder builder)
 	services.AddHttpServices();
 	services.AddRabbitMqServices(configuration);
 	services.AddMessageServingServices();
-	services.AddMongoDbServices(configuration);
-	services.AddMongoDbRepositoriesServices(configuration);
+
+	//services.AddMongoDbServices(configuration);
+	//services.AddMongoDbRepositoriesServices(configuration);
+
+	services.AddPostgresDbServices(configuration);
+	services.AddPostgresDbRepositoriesServices(configuration);
+
 	services.AddValidationServices();
 	services.AddHostedServices();
 	services.AddHeadersServices();
 
 	// Регистрируем GateConfiguration
 	services.AddSingleton<GateConfiguration>();
+
+	// Авторизация и аутентификация: на данный момент эта часть не используется. Написана для будущего.
+	services
+	.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+	.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+	{
+		options.TokenValidationParameters = new TokenValidationParameters
+		{
+			ValidateIssuer = true,
+			ValidIssuer = configuration["Jwt:Issuer"],
+			ValidateAudience = true,
+			ValidAudience = configuration["Jwt:Audience"],
+			ValidateIssuerSigningKey = true,
+			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Secret"] ?? "supersecretkey")),
+			ValidateLifetime = true
+		};
+	});
+
+	services.AddAuthorization();
 }
 
 static void ConfigureApp(WebApplication app, string httpUrl, string httpsUrl)
@@ -68,6 +98,9 @@ static void ConfigureApp(WebApplication app, string httpUrl, string httpsUrl)
 		.AllowAnyOrigin()
 		.AllowAnyMethod()
 		.AllowAnyHeader());
+
+	app.UseAuthentication();
+	app.UseAuthorization();
 
 	app.MapControllers();
 }

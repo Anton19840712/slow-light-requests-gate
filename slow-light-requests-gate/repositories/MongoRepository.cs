@@ -121,7 +121,7 @@ namespace lazy_light_requests_gate.repositories
 			return await _collection.Find(filter).ToListAsync();
 		}
 
-		public async Task MarkMessageAsProcessedAsync(string messageId)
+		public async Task MarkMessageAsProcessedAsync(Guid messageId)
 		{
 			var update = Builders<T>.Update
 				.Set("IsProcessed", true)

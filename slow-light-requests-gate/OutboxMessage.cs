@@ -1,4 +1,5 @@
-﻿using lazy_light_requests_gate.models;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using lazy_light_requests_gate.models;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization.Attributes;
@@ -10,7 +11,7 @@ namespace lazy_light_requests_gate
 
 		[BsonId]
 		[BsonRepresentation(BsonType.String)]
-		public string Id { get; set; }
+		public Guid Id { get; set; }
 
 		[BsonElement("modelType")]
 		public ModelType ModelType { get; set; }
@@ -51,6 +52,7 @@ namespace lazy_light_requests_gate
 		public string Source { get; set; }
 
 		[BsonIgnore]
+		[NotMapped]
 		public string FormattedDate => CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
 
 		public OutboxMessage()

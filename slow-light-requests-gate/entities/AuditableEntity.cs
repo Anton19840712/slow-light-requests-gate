@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace lazy_light_requests_gate.entities
@@ -7,7 +8,7 @@ namespace lazy_light_requests_gate.entities
 	{
 		[BsonId]
 		[BsonRepresentation(BsonType.ObjectId)]
-		public string Id { get; set; }
+		public Guid Id { get; set; }
 		public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 		public DateTime? UpdatedAtUtc { get; set; }
 		public DateTime? DeletedAtUtc { get; set; }
@@ -31,6 +32,7 @@ namespace lazy_light_requests_gate.entities
 		public string CreatedAtFormatted { get; set; }
 
 		[BsonIgnore]
+		[NotMapped]
 		public string FormattedDate => CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
 
 		public AuditableEntity()

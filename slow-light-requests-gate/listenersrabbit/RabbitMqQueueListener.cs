@@ -24,6 +24,12 @@ namespace listenersrabbit
 		{
 			_channel = _connection.CreateModel();
 
+			if (string.IsNullOrWhiteSpace(queueOutName))
+			{
+				_logger.LogError("Имя очереди не задано. Остановка слушателя.");
+				throw new ArgumentException("Имя очереди не может быть пустым", nameof(queueOutName));
+			}
+
 			if (!QueueExists(queueOutName))
 			{
 				_logger.LogWarning("Очередь {Queue} не найдена. Создаю новую.", queueOutName);
@@ -101,6 +107,12 @@ namespace listenersrabbit
 
 		private bool QueueExists(string queueName)
 		{
+			if (string.IsNullOrWhiteSpace(queueName))
+			{
+				_logger.LogError("Проверка очереди: имя очереди пустое.");
+				throw new ArgumentException("Имя очереди не может быть пустым", nameof(queueName));
+			}
+
 			try
 			{
 				_channel.QueueDeclarePassive(queueName);

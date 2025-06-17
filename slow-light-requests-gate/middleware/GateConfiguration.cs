@@ -32,6 +32,7 @@ public class GateConfiguration
 		builder.Configuration["Port"] = port.ToString();
 		builder.Configuration["Validate"] = enableValidation.ToString();
 
+		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:80";
 		var httpsUrl = $"https://{host}:443";
 		return await Task.FromResult((httpUrl, httpsUrl));

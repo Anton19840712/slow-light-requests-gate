@@ -14,6 +14,8 @@ public class HttpProtocolController : ControllerBase
 	private readonly IMessageProcessingService _messageProcessingService;
 	private readonly IConfiguration _configuration;
 
+	private string _message;
+
 	public HttpProtocolController(
 		ILogger<HttpProtocolController> logger,
 		IHeaderValidationService headerValidationService,
@@ -26,6 +28,7 @@ public class HttpProtocolController : ControllerBase
 		_configuration = configuration;
 	}
 
+	//[Authorize] // в этой версии динамического шлюза мы отложили использование авторизации.
 	[HttpPost("push")]
 	public async Task<IActionResult> PushMessage()
 	{
@@ -34,8 +37,8 @@ public class HttpProtocolController : ControllerBase
 		var port = _configuration["Port"] ?? "5000";
 		var validate = bool.TryParse(_configuration["Validate"], out var v) && v;
 		var protocol = Request.Scheme;
-		// 🔍 Логируем заголовки
 
+		// 🔍 Логируем заголовки
 		_logger.LogInformation("🔍 Заголовки запроса:");
 		foreach (var header in Request.Headers)
 		{
@@ -45,20 +48,21 @@ public class HttpProtocolController : ControllerBase
 
 		// 🔍 Логируем тело запроса (один раз можно прочитать Body)
 		Request.EnableBuffering(); // <- важно! позволяет читать тело повторно
+
 		using (var reader = new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true))
 		{
 			var body = await reader.ReadToEndAsync();
-			Request.Body.Position = 0; // сбрасываем позицию после чтения
+			_message = body;
 
-			_logger.LogInformation("📦 Тело запроса: {Body}", body);
+			Request.Body.Position = 0;
+			_logger.LogInformation("Тело запроса: {Body}", body);
 		}
-		_logger.LogInformation("🔧 Параметры шлюза: Company={Company}, Host={Host}, Port={Port}, Validate={Validate}, Protocol={Protocol}",
+		_logger.LogInformation("Параметры шлюза: Company={Company}, Host={Host}, Port={Port}, Validate={Validate}, Protocol={Protocol}",
 			companyName, host, port, validate, protocol);
 
 		var queueOut = $"{companyName.Trim().ToLower()}_out";
 		var queueIn = $"{companyName.Trim().ToLower()}_in";
-
-		var message = await new StreamReader(Request.Body).ReadToEndAsync();
+		
 
 		// SSE/HTTP Streaming Headers (опционально, если клиент слушает ответ как стрим)
 		Response.Headers.Append("Content-Type", "text/event-stream");
@@ -66,24 +70,27 @@ public class HttpProtocolController : ControllerBase
 		Response.Headers.Append("Connection", "keep-alive");
 		Response.Headers.Append("Access-Control-Allow-Origin", "*");
 
+		// если нужно валидировать из данных изначального файла конфигурации ("Validate": true там указано):
 		if (validate)
 		{
+			//проверяем на наличие тега кастомной валидации:
 			var isValid = await _headerValidationService.ValidateHeadersAsync(Request.Headers);
 			if (!isValid)
 			{
-				_logger.LogWarning("⚠️ Заголовки не прошли валидацию.");
+				_logger.LogWarning("Заголовки не прошли валидацию.");
 				return BadRequest("Заголовки не прошли валидацию.");
 			}
 		}
 		else
 		{
-			_logger.LogInformation("✅ Валидация отключена.");
+			_logger.LogInformation("Валидация отключена.");
 		}
 
 		LogHeaders();
 
+		// пока мы отправляем запрос, если flow позволяет это сделать и была пройдена валидация.
 		await _messageProcessingService.ProcessIncomingMessageAsync(
-			message,
+			_message,
 			queueOut,
 			queueIn,
 			host,
@@ -91,12 +98,12 @@ public class HttpProtocolController : ControllerBase
 			protocol
 		);
 
-		return Ok("✅ Модель отправлена в шину и сохранена в БД.");
+		return Ok("Модель отправлена в шину и сохранена в БД.");
 	}
 
 	private void LogHeaders()
 	{
-		_logger.LogInformation("📋 Получены заголовки запроса:");
+		_logger.LogInformation("Получены заголовки запроса:");
 		foreach (var header in Request.Headers)
 		{
 			_logger.LogInformation("  {Header}: {Value}", header.Key, header.Value);

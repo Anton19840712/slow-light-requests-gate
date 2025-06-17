@@ -14,7 +14,7 @@ namespace lazy_light_requests_gate.repositories
 
 		Task SaveMessageAsync(T message);
 		Task<List<T>> GetUnprocessedMessagesAsync();
-		Task MarkMessageAsProcessedAsync(string messageId);
+		Task MarkMessageAsProcessedAsync(Guid messageId);
 		Task<int> DeleteOldMessagesAsync(TimeSpan olderThan);
 	}
 }
