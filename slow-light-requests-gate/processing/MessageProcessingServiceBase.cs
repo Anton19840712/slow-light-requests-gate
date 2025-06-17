@@ -22,7 +22,7 @@ namespace lazy_light_requests_gate.processing
 		{
 			try
 			{
-				var outboxMessage = MessageFactory.CreateOutboxMessage(message, instanceModelQueueOutName, instanceModelQueueInName, protocol, host, port);
+				var outboxMessage = MessageFactory.CreateOutboxMessage(message, instanceModelQueueInName, instanceModelQueueOutName, protocol, host, port);
 
 				var incidentEntity = MessageFactory.CreateIncidentEntity(message, protocol);
 

@@ -57,7 +57,7 @@ namespace lazy_light_requests_gate.background
 								message.IsProcessed = true;
 								message.ProcessedAt = DateTime.UtcNow;
 								await _outboxRepository.UpdateMessageAsync(message);
-
+								
 								_logger.LogInformation($"{GetType().Name}: сообщение {message.Id} успешно отправлено в очередь {message.InQueue}.");
 							}
 							catch (Exception ex)
@@ -65,10 +65,6 @@ namespace lazy_light_requests_gate.background
 								_logger.LogError(ex, $"{GetType().Name}: ошибка при отправке сообщения {message.Id} в очередь {message.InQueue}.");
 							}
 						}
-					}
-					else
-					{
-						_logger.LogInformation($"{GetType().Name}: новых сообщений для отправки не найдено.");
 					}
 				}
 				catch (Exception ex)
