@@ -62,13 +62,7 @@ public class HttpProtocolController : ControllerBase
 
 		var queueOut = $"{companyName.Trim().ToLower()}_out";
 		var queueIn = $"{companyName.Trim().ToLower()}_in";
-		
 
-		// SSE/HTTP Streaming Headers (опционально, если клиент слушает ответ как стрим)
-		Response.Headers.Append("Content-Type", "text/event-stream");
-		Response.Headers.Append("Cache-Control", "no-cache");
-		Response.Headers.Append("Connection", "keep-alive");
-		Response.Headers.Append("Access-Control-Allow-Origin", "*");
 
 		// если нужно валидировать из данных изначального файла конфигурации ("Validate": true там указано):
 		if (validate)
