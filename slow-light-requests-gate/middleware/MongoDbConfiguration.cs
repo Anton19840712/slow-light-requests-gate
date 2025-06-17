@@ -26,9 +26,16 @@ namespace lazy_light_requests_gate.middleware
 			}.ToString();
 
 			// 🔐 Настраиваем сериализацию Guid-ов
-
 			BsonDefaults.GuidRepresentationMode = GuidRepresentationMode.V3; // современный режим (рекомендуется)
-			BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+
+			try
+			{
+				BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+			}
+			catch (BsonSerializationException)
+			{
+				// Сериализатор уже зарегистрирован, игнорируем
+			}
 
 
 			var settings = MongoClientSettings.FromUrl(new MongoUrl(mongoUrl));
