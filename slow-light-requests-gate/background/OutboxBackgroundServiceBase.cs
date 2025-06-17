@@ -1,4 +1,5 @@
 ﻿using lazy_light_requests_gate.repositories;
+using lazy_light_requests_gate.services.lazy_light_requests_gate.services;
 
 namespace lazy_light_requests_gate.background
 {
@@ -8,22 +9,25 @@ namespace lazy_light_requests_gate.background
 		protected readonly TRepository _outboxRepository;
 		protected readonly IRabbitMqService _rabbitMqService;
 		protected readonly ILogger _logger;
+		protected readonly ICleanupService<TRepository> _cleanupService;
 
 		public OutboxBackgroundServiceBase(
 			TRepository outboxRepository,
 			IRabbitMqService rabbitMqService,
-			ILogger<OutboxBackgroundServiceBase<TRepository>> logger)
+			ILogger<OutboxBackgroundServiceBase<TRepository>> logger,
+			ICleanupService<TRepository> cleanupService)
 		{
 			_outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
 			_rabbitMqService = rabbitMqService ?? throw new ArgumentNullException(nameof(rabbitMqService));
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+			_cleanupService = cleanupService ?? throw new ArgumentNullException(nameof(cleanupService));
 		}
 
 		protected override async Task ExecuteAsync(CancellationToken token)
 		{
 			_logger.LogInformation($"{GetType().Name}: фоновый процесс по сканированию и отправке сообщений из outbox table запущен.");
 
-			_ = Task.Run(() => CleanupOldMessagesAsync(token), token);
+			_ = Task.Run(() => _cleanupService.StartCleanupAsync(_outboxRepository, token), token);
 			_logger.LogInformation($"{GetType().Name}: фоновый процесс по ликвидации отправленных сообщений из outbox table запущен.");
 
 			while (!token.IsCancellationRequested)
@@ -57,29 +61,7 @@ namespace lazy_light_requests_gate.background
 			}
 		}
 
-		private async Task CleanupOldMessagesAsync(CancellationToken token)
-		{
-			const int ttlDifference = 10;
-			const int intervalInSeconds = 10;
 
-			while (!token.IsCancellationRequested)
-			{
-				try
-				{
-					int deletedCount = await DeleteOldMessagesAsync(TimeSpan.FromSeconds(ttlDifference));
-					if (deletedCount != 0)
-					{
-						_logger.LogInformation($"{GetType().Name}: удалено {deletedCount} старых сообщений из базы GatewayDB, коллекции outbox_messages.");
-					}
-				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, "Ошибка при очистке старых сообщений Outbox.");
-				}
-
-				await Task.Delay(TimeSpan.FromSeconds(intervalInSeconds), token);
-			}
-		}
 
 		protected virtual async Task<IEnumerable<OutboxMessage>> GetUnprocessedMessagesAsync()
 		{
