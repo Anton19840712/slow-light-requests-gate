@@ -17,7 +17,7 @@ namespace lazy_light_requests_gate.middleware
 			services.AddTransient<MessageProcessingMongoService>();
 
 			// Регистрируем фабрику
-			services.AddSingleton<IMessageProcessingServiceFactory, MessageProcessingServiceFactory>();
+			services.AddScoped<IMessageProcessingServiceFactory, MessageProcessingServiceFactory>();
 
 			// Регистрируем основной сервис на основе конфигурации
 			if (database == "postgres")

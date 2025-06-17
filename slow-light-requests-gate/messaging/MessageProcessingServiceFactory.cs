@@ -8,12 +8,15 @@ namespace lazy_light_requests_gate.processing
 	public class MessageProcessingServiceFactory : IMessageProcessingServiceFactory
 	{
 		private readonly IServiceProvider _serviceProvider;
-		private string _currentDatabaseType;
+		private static string _currentDatabaseType;
 
 		public MessageProcessingServiceFactory(IServiceProvider serviceProvider, IConfiguration configuration)
 		{
 			_serviceProvider = serviceProvider;
-			_currentDatabaseType = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
+			if (string.IsNullOrEmpty(_currentDatabaseType))
+			{
+				_currentDatabaseType = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
+			}
 		}
 
 		public IMessageProcessingService CreateMessageProcessingService(string databaseType)
