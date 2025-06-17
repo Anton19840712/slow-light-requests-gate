@@ -4,6 +4,7 @@ using Npgsql;
 using System.Data;
 using Serilog;
 using Dapper;
+using lazy_light_requests_gate.services;
 
 namespace lazy_light_requests_gate.middleware;
 
@@ -22,6 +23,7 @@ public static class PostgresDbConfiguration
 		});
 
 		services.AddScoped(typeof(IPostgresRepository<>), typeof(PostgresRepository<>));
+		services.AddScoped(typeof(ICleanupService<IPostgresRepository<OutboxMessage>>), typeof(CleanupService<IPostgresRepository<OutboxMessage>>));
 
 		return services;
 	}

@@ -4,6 +4,8 @@ using MongoDB.Bson;
 using System.Security.Authentication;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Bson.Serialization;
+using lazy_light_requests_gate.repositories;
+using lazy_light_requests_gate.services;
 
 namespace lazy_light_requests_gate.middleware
 {
@@ -50,7 +52,8 @@ namespace lazy_light_requests_gate.middleware
 				var client = sp.GetRequiredService<IMongoClient>();
 				return client.GetDatabase(databaseName);
 			});
-
+			services.AddScoped(typeof(IMongoRepository<>), typeof(MongoRepository<>));
+			services.AddScoped(typeof(ICleanupService<IMongoRepository<OutboxMessage>>), typeof(CleanupService<IMongoRepository<OutboxMessage>>));
 			return services;
 		}
 	}
