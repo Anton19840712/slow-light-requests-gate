@@ -11,7 +11,7 @@ public class HttpProtocolController : ControllerBase
 {
 	private readonly ILogger<HttpProtocolController> _logger;
 	private readonly IHeaderValidationService _headerValidationService;
-	private readonly IMessageProcessingService _messageProcessingService;
+	private readonly IMessageProcessingServiceFactory _messageProcessingServiceFactory;
 	private readonly IConfiguration _configuration;
 
 	private string _message;
@@ -19,12 +19,12 @@ public class HttpProtocolController : ControllerBase
 	public HttpProtocolController(
 		ILogger<HttpProtocolController> logger,
 		IHeaderValidationService headerValidationService,
-		IMessageProcessingService messageProcessingService,
+		IMessageProcessingServiceFactory messageProcessingServiceFactory,
 		IConfiguration configuration)
 	{
 		_logger = logger;
 		_headerValidationService = headerValidationService;
-		_messageProcessingService = messageProcessingService;
+		_messageProcessingServiceFactory = messageProcessingServiceFactory;
 		_configuration = configuration;
 	}
 
@@ -83,7 +83,10 @@ public class HttpProtocolController : ControllerBase
 		LogHeaders();
 
 		// пока мы отправляем запрос, если flow позволяет это сделать и была пройдена валидация.
-		await _messageProcessingService.ProcessIncomingMessageAsync(
+		var currentDatabaseType = _messageProcessingServiceFactory.GetCurrentDatabaseType();
+		var messageProcessingService = _messageProcessingServiceFactory.CreateMessageProcessingService(currentDatabaseType);
+
+		await messageProcessingService.ProcessIncomingMessageAsync(
 			_message,
 			queueOut,
 			queueIn,
