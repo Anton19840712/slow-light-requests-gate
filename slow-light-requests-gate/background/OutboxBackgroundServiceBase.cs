@@ -29,9 +29,9 @@ namespace lazy_light_requests_gate.background
 
 			using var scope = _serviceScopeFactory.CreateScope();
 			var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<TRepository>>();
-			var outboxRepository = scope.ServiceProvider.GetRequiredService<TRepository>();
+			_outboxRepository = scope.ServiceProvider.GetRequiredService<TRepository>();
 
-			_ = Task.Run(() => cleanupService.StartCleanupAsync(outboxRepository, token), token);
+			_ = Task.Run(() => cleanupService.StartCleanupAsync(_outboxRepository, token), token);
 			_logger.LogInformation($"{GetType().Name}: фоновый процесс по ликвидации отправленных сообщений из outbox table запущен.");
 
 			while (!token.IsCancellationRequested)

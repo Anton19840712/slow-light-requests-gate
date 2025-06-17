@@ -14,13 +14,13 @@ namespace lazy_light_requests_gate.middleware
 
 			if (database == "postgres")
 			{
-				services.AddScoped(typeof(ICleanupService<>), typeof(CleanupService<>));
+				services.AddSingleton(typeof(ICleanupService<>), typeof(CleanupService<>));
 				services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
 				services.AddHostedService<OutboxBackgroundServicePostgres>();
 			}
 			else // mongo по умолчанию
 			{
-				services.AddScoped(typeof(ICleanupService<>), typeof(CleanupService<>));
+				services.AddSingleton(typeof(ICleanupService<>), typeof(CleanupService<>));
 				services.AddHostedService<QueueListenerBackgroundServiceMongo>();
 				services.AddHostedService<OutboxBackgroundServiceMongo>();
 			}
