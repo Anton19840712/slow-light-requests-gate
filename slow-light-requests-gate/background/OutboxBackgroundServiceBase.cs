@@ -9,14 +9,14 @@ namespace lazy_light_requests_gate.background
 		protected readonly IRabbitMqService _rabbitMqService;
 		protected readonly ILogger _logger;
 
-		protected OutboxBackgroundServiceBase(
+		public OutboxBackgroundServiceBase(
 			TRepository outboxRepository,
 			IRabbitMqService rabbitMqService,
-			ILogger logger)
+			ILogger<OutboxBackgroundServiceBase<TRepository>> logger)
 		{
-			_outboxRepository = outboxRepository;
-			_rabbitMqService = rabbitMqService;
-			_logger = logger;
+			_outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
+			_rabbitMqService = rabbitMqService ?? throw new ArgumentNullException(nameof(rabbitMqService));
+			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 		}
 
 		protected override async Task ExecuteAsync(CancellationToken token)
