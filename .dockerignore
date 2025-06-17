@@ -1,0 +1,13 @@
+
+**/bin/
+**/obj/
+**/.git/
+**/.gitignore
+**/.dockerignore
+**/Dockerfile*
+**/docker-compose*
+**/.vs/
+**/.vscode/
+**/attached_assets/
+**/.replit
+**/README.md
