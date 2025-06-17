@@ -5,12 +5,20 @@ namespace lazy_light_requests_gate.middleware
 	static class MessagingConfiguration
 	{
 		/// <summary>
-		/// Регистрация сервисов, участвующих в отсылке и получении сообщений.
+		/// Регистрация сервисов, участвующих в отсылке и получении сообщений на основе параметра Database.
 		/// </summary>
-		public static IServiceCollection AddMessageServingServices(this IServiceCollection services)
+		public static IServiceCollection AddMessageServingServices(this IServiceCollection services, IConfiguration configuration)
 		{
-			//services.AddTransient<IMessageProcessingService, MessageProcessingMongoService>();
-			services.AddTransient<IMessageProcessingService, MessageProcessingPostgresService>();
+			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
+
+			if (database == "postgres")
+			{
+				services.AddTransient<IMessageProcessingService, MessageProcessingPostgresService>();
+			}
+			else // mongo по умолчанию
+			{
+				services.AddTransient<IMessageProcessingService, MessageProcessingMongoService>();
+			}
 
 			return services;
 		}

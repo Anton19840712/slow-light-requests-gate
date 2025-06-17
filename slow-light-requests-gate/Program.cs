@@ -51,7 +51,7 @@ static void ConfigureServices(WebApplicationBuilder builder)
 	services.AddCommonServices();
 	services.AddHttpServices();
 	services.AddRabbitMqServices(configuration);
-	services.AddMessageServingServices();
+	services.AddMessageServingServices(configuration);
 
 	services.AddMongoDbServices(configuration);
 	services.AddMongoDbRepositoriesServices(configuration);
@@ -60,7 +60,7 @@ static void ConfigureServices(WebApplicationBuilder builder)
 	services.AddPostgresDbRepositoriesServices(configuration);
 
 	services.AddValidationServices();
-	services.AddHostedServices(builder.Configuration);
+	services.AddHostedServices(configuration);
 	services.AddHeadersServices();
 
 	// Регистрируем GateConfiguration
