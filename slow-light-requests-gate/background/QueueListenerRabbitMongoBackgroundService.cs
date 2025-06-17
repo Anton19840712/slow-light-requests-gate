@@ -1,54 +1,16 @@
 ﻿using lazy_light_requests_gate.entities;
-using lazy_light_requests_gate.listenersrabbit;
 using lazy_light_requests_gate.repositories;
-using listenersrabbit;
+using lazy_light_requests_gate.background;
 
 /// <summary>
-/// Сервис слушает очередь bpm
+/// Сервис слушает очередь bpm для MongoDB
 /// </summary>
-public class QueueListenerRabbitMongoBackgroundService : BackgroundService
+public class QueueListenerRabbitMongoBackgroundService : QueueListenerBackgroundServiceBase<IMongoRepository<QueuesEntity>>
 {
-	private readonly IServiceScopeFactory _scopeFactory;
-	private readonly ILogger<QueueListenerRabbitMongoBackgroundService> _logger;
-
-	public QueueListenerRabbitMongoBackgroundService(IServiceScopeFactory scopeFactory, ILogger<QueueListenerRabbitMongoBackgroundService> logger)
+	public QueueListenerRabbitMongoBackgroundService(
+		IServiceScopeFactory scopeFactory,
+		ILogger<QueueListenerRabbitMongoBackgroundService> logger)
+		: base(scopeFactory, logger)
 	{
-		_scopeFactory = scopeFactory;
-		_logger = logger;
-	}
-
-	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-	{
-		_logger.LogInformation("QueueListenerMongoBackgroundService: пробуем запуск фонового сервиса прослушивания очередей.");
-
-		try
-		{
-			using var scope = _scopeFactory.CreateScope();
-			var queueListener = scope.ServiceProvider.GetRequiredService<IRabbitMqQueueListener<RabbitMqQueueListener>>();
-			var queuesRepository = scope.ServiceProvider.GetRequiredService<IMongoRepository<QueuesEntity>>();
-
-			var elements = await queuesRepository.GetAllAsync();
-
-			if (elements == null || !elements.Any())
-			{
-				_logger.LogInformation("Нет конкретных очередей для прослушивания. Слушатели rabbit не будут запущены.");
-				return;
-			}
-
-			var listeningTasks = elements
-				.Select(element => Task.Run(() => queueListener.StartListeningAsync(element.OutQueueName, stoppingToken), stoppingToken))
-				.ToList();
-
-			await Task.WhenAll(listeningTasks);
-
-			foreach (var item in elements)
-			{
-				_logger.LogInformation($"Слушатель для очереди {item.OutQueueName} запущен.");
-			}
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Ошибка при запуске слушателей очередей.");
-		}
 	}
 }
