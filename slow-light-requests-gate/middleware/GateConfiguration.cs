@@ -35,6 +35,19 @@ public static class GateConfiguration
 		builder.Configuration["Validate"] = enableValidation.ToString();
 		builder.Configuration["Database"] = database;
 
+		// Настраиваем оба типа БД для возможности переключения
+		if (database == "postgres")
+		{
+			builder.Services.AddPostgresDbServices(builder.Configuration);
+			builder.Services.AddPostgresDbRepositoriesServices(builder.Configuration);
+		}
+
+		// Всегда настраиваем MongoDB для возможности переключения
+		builder.Services.AddMongoDbServices(builder.Configuration);
+		builder.Services.AddMongoDbRepositoriesServices(builder.Configuration);
+
+		builder.Configuration["Database"] = database;
+
 		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:80";
 		var httpsUrl = $"https://{host}:443";

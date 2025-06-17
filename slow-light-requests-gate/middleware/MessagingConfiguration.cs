@@ -12,6 +12,14 @@ namespace lazy_light_requests_gate.middleware
 		{
 			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
 
+			// Регистрируем оба сервиса
+			services.AddTransient<MessageProcessingPostgresService>();
+			services.AddTransient<MessageProcessingMongoService>();
+
+			// Регистрируем фабрику
+			services.AddSingleton<IMessageProcessingServiceFactory, MessageProcessingServiceFactory>();
+
+			// Регистрируем основной сервис на основе конфигурации
 			if (database == "postgres")
 			{
 				services.AddTransient<IMessageProcessingService, MessageProcessingPostgresService>();

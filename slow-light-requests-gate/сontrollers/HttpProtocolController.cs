@@ -88,7 +88,7 @@ public class HttpProtocolController : ControllerBase
 			queueOut,
 			queueIn,
 			host,
-			int.Parse(port),
+			int.TryParse(port, out var portInt) ? portInt : null,
 			protocol
 		);
 
