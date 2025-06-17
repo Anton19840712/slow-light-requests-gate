@@ -1,5 +1,4 @@
 ﻿using lazy_light_requests_gate.background;
-using lazy_light_requests_gate.services;
 
 namespace lazy_light_requests_gate.middleware
 {
@@ -12,17 +11,23 @@ namespace lazy_light_requests_gate.middleware
 		{
 			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
 
+			// Регистрируем обычные сервисы для возможности их получения через DI
+			services.AddTransient<OutboxBackgroundServicePostgres>();
+			services.AddTransient<OutboxBackgroundServiceMongo>();
+			services.AddTransient<QueueListenerRabbitPostgresBackgroundService>();
+			services.AddTransient<QueueListenerBackgroundServiceMongo>();
+
+			// Регистрируем динамические фоновые сервисы
+			services.AddHostedService<DynamicOutboxBackgroundService>();
+
+			// Регистрируем фоновые сервисы в зависимости от базы данных
 			if (database == "postgres")
 			{
-				services.AddSingleton(typeof(ICleanupService<>), typeof(CleanupService<>));
 				services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
-				services.AddHostedService<OutboxBackgroundServicePostgres>();
 			}
 			else // mongo по умолчанию
 			{
-				services.AddSingleton(typeof(ICleanupService<>), typeof(CleanupService<>));
 				services.AddHostedService<QueueListenerBackgroundServiceMongo>();
-				services.AddHostedService<OutboxBackgroundServiceMongo>();
 			}
 
 			return services;

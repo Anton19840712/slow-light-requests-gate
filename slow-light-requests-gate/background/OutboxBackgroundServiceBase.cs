@@ -90,5 +90,10 @@ namespace lazy_light_requests_gate.background
 		{
 			return await _outboxRepository.DeleteOldMessagesAsync(olderThan);
 		}
+
+		protected virtual async Task UpdateMessageAsync(OutboxMessage message)
+		{
+			await _outboxRepository.UpdateMessageAsync(message);
+		}
 	}
 }
