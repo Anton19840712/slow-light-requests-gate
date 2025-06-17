@@ -1,5 +1,5 @@
-﻿using lazy_light_requests_gate.entities;
-using lazy_light_requests_gate.models;
+﻿using lazy_light_requests_gate.common;
+using lazy_light_requests_gate.entities;
 
 namespace lazy_light_requests_gate.processing
 {
@@ -22,33 +22,9 @@ namespace lazy_light_requests_gate.processing
 		{
 			try
 			{
-				var outboxMessage = new OutboxMessage
-				{
-					Id = Guid.NewGuid(),
-					ModelType = ModelType.Outbox,
-					EventType = EventTypes.Received,
-					IsProcessed = false,
-					ProcessedAt = DateTime.Now,
-					InQueue = instanceModelQueueInName,
-					OutQueue = instanceModelQueueOutName,
-					Payload = message,
-					RoutingKey = $"routing_key_{protocol}",
-					CreatedAt = DateTime.UtcNow,
-					Source = $"{protocol}-server-instance based on host: {host} and port {port}"
-				};
+				var outboxMessage = MessageFactory.CreateOutboxMessage(message, instanceModelQueueOutName, instanceModelQueueInName, protocol, host, port);
 
-				var incidentEntity = new IncidentEntity
-				{
-					Id = Guid.NewGuid(),
-					Payload = message,
-					CreatedAtUtc = DateTime.UtcNow,
-					CreatedBy = $"{protocol}-server-instance",
-					IpAddress = "default",
-					UserAgent = $"{protocol}-server-instance",
-					CorrelationId = Guid.NewGuid().ToString(),
-					ModelType = "Incident",
-					IsProcessed = false
-				};
+				var incidentEntity = MessageFactory.CreateIncidentEntity(message, protocol);
 
 				await SaveOutboxMessageAsync(outboxMessage);
 				await SaveIncidentAsync(incidentEntity);

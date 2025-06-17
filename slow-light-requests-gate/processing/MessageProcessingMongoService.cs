@@ -1,69 +1,35 @@
 ﻿using lazy_light_requests_gate.entities;
-using lazy_light_requests_gate.models;
 using lazy_light_requests_gate.repositories;
 
 namespace lazy_light_requests_gate.processing
 {
 	// Сервис обработки сообщений:
-	public class MessageProcessingMongoService : IMessageProcessingService
+	namespace lazy_light_requests_gate.processing
 	{
-		private readonly IMongoRepository<OutboxMessage> _outboxRepository;
-		private readonly IMongoRepository<IncidentEntity> _incidentRepository;
-		private readonly ILogger<MessageProcessingMongoService> _logger;
-
-		public MessageProcessingMongoService(
-			IMongoRepository<OutboxMessage> outboxRepository,
-			IMongoRepository<IncidentEntity> incidentRepository,
-			ILogger<MessageProcessingMongoService> logger)
+		// Сервис обработки сообщений:
+		public class MessageProcessingMongoService : MessageProcessingServiceBase
 		{
-			_outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
-			_incidentRepository = incidentRepository ?? throw new ArgumentNullException(nameof(incidentRepository));
-			_logger = logger;
-		}
+			private readonly IMongoRepository<OutboxMessage> _outboxRepository;
+			private readonly IMongoRepository<IncidentEntity> _incidentRepository;
 
-		public async Task ProcessIncomingMessageAsync(
-			string message,
-			string instanceModelQueueOutName,
-			string instanceModelQueueInName,
-			string host,
-			int? port,
-			string protocol)
-		{
-			try
+			public MessageProcessingMongoService(
+				IMongoRepository<OutboxMessage> outboxRepository,
+				IMongoRepository<IncidentEntity> incidentRepository,
+				ILogger<MessageProcessingMongoService> logger)
+				: base(logger)
 			{
-				var outboxMessage = new OutboxMessage
-				{
-					Id = Guid.NewGuid(),
-					ModelType = ModelType.Outbox,
-					EventType = EventTypes.Received,
-					IsProcessed = false,
-					ProcessedAt = DateTime.Now,
-					InQueue = instanceModelQueueInName,
-					OutQueue = instanceModelQueueOutName,
-					Payload = message,
-					RoutingKey = $"routing_key_{protocol}",
-					CreatedAt = DateTime.UtcNow,
-					Source = $"{protocol}-server-instance based on host: {host} and port {port}"
-				};
-				await _outboxRepository.SaveMessageAsync(outboxMessage);
-
-				var incidentEntity = new IncidentEntity
-				{
-					Payload = message,
-					CreatedAtUtc = DateTime.UtcNow,
-					CreatedBy = $"{protocol}-server-instance",
-					IpAddress = "default",
-					UserAgent = $"{protocol}-server-instance",
-					CorrelationId = Guid.NewGuid().ToString(),
-					ModelType = "Incident",
-					IsProcessed = false
-				};
-				await _incidentRepository.SaveMessageAsync(incidentEntity);
+				_outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
+				_incidentRepository = incidentRepository ?? throw new ArgumentNullException(nameof(incidentRepository));
 			}
-			catch (Exception ex)
+
+			protected override async Task SaveOutboxMessageAsync(OutboxMessage message)
 			{
-				_logger.LogError("Ошибка при обработке сообщения.");
-				_logger.LogError(ex.Message);
+				await _outboxRepository.SaveMessageAsync(message);
+			}
+
+			protected override async Task SaveIncidentAsync(IncidentEntity incident)
+			{
+				await _incidentRepository.SaveMessageAsync(incident);
 			}
 		}
 	}
