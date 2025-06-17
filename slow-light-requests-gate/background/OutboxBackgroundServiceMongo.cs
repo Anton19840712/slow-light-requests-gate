@@ -6,11 +6,11 @@ namespace lazy_light_requests_gate.background
 	public class OutboxBackgroundServiceMongo : OutboxBackgroundServiceBase<IMongoRepository<OutboxMessage>>
 	{
 		public OutboxBackgroundServiceMongo(
-			IMongoRepository<OutboxMessage> outboxRepository,
+			IServiceScopeFactory serviceScopeFactory,
 			IRabbitMqService rabbitMqService,
 			ILogger<OutboxBackgroundServiceMongo> logger,
 			ICleanupService<IMongoRepository<OutboxMessage>> cleanupService)
-			: base(outboxRepository, rabbitMqService, logger, cleanupService)
+			: base(serviceScopeFactory, rabbitMqService, logger, cleanupService)
 		{
 		}
 	}

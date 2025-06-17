@@ -6,11 +6,11 @@ namespace lazy_light_requests_gate.background
 	public class OutboxBackgroundServicePostgres : OutboxBackgroundServiceBase<IPostgresRepository<OutboxMessage>>
 	{
 		public OutboxBackgroundServicePostgres(
-			IPostgresRepository<OutboxMessage> outboxRepository,
+			IServiceScopeFactory serviceScopeFactory,
 			IRabbitMqService rabbitMqService,
 			ILogger<OutboxBackgroundServicePostgres> logger,
 			ICleanupService<IPostgresRepository<OutboxMessage>> cleanupService)
-			: base(outboxRepository, rabbitMqService, logger, cleanupService)
+			: base(serviceScopeFactory, rabbitMqService, logger, cleanupService)
 		{
 		}
 	}

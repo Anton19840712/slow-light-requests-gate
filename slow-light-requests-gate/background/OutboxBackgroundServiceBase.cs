@@ -6,28 +6,32 @@ namespace lazy_light_requests_gate.background
 	public class OutboxBackgroundServiceBase<TRepository> : BackgroundService
 			where TRepository : IBaseRepository<OutboxMessage>
 	{
-		protected readonly TRepository _outboxRepository;
+		protected TRepository _outboxRepository;
 		protected readonly IRabbitMqService _rabbitMqService;
 		protected readonly ILogger _logger;
 		protected readonly ICleanupService<TRepository> _cleanupService;
-
+		protected readonly IServiceScopeFactory _serviceScopeFactory;
 		public OutboxBackgroundServiceBase(
-			TRepository outboxRepository,
+			IServiceScopeFactory serviceScopeFactory,
 			IRabbitMqService rabbitMqService,
 			ILogger<OutboxBackgroundServiceBase<TRepository>> logger,
 			ICleanupService<TRepository> cleanupService)
 		{
-			_outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));
 			_rabbitMqService = rabbitMqService ?? throw new ArgumentNullException(nameof(rabbitMqService));
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 			_cleanupService = cleanupService ?? throw new ArgumentNullException(nameof(cleanupService));
+			_serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
 		}
 
 		protected override async Task ExecuteAsync(CancellationToken token)
 		{
 			_logger.LogInformation($"{GetType().Name}: фоновый процесс по сканированию и отправке сообщений из outbox table запущен.");
 
-			_ = Task.Run(() => _cleanupService.StartCleanupAsync(_outboxRepository, token), token);
+			using var scope = _serviceScopeFactory.CreateScope();
+			var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<TRepository>>();
+			var outboxRepository = scope.ServiceProvider.GetRequiredService<TRepository>();
+
+			_ = Task.Run(() => cleanupService.StartCleanupAsync(outboxRepository, token), token);
 			_logger.LogInformation($"{GetType().Name}: фоновый процесс по ликвидации отправленных сообщений из outbox table запущен.");
 
 			while (!token.IsCancellationRequested)
