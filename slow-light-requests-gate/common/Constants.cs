@@ -2,9 +2,10 @@
 {
 	public static class Constants
 	{
-		public const int DefaultMessageProcessingDelayMs = 2000;
+		// Константы для сервиса очистки
 		public const int DefaultTtlDifferenceSeconds = 10;
 		public const int DefaultCleanupIntervalSeconds = 10;
+		public const int DefaultMessageProcessingDelayMs = 2000;
 		public const string DefaultIpAddress = "default";
 		public const string DefaultUserAgent = "server-instance";
 		public const string RoutingKeyPrefix = "routing_key_";
