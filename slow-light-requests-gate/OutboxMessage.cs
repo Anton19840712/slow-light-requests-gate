@@ -10,7 +10,7 @@ namespace lazy_light_requests_gate
 	{
 
 		[BsonId]
-		[BsonRepresentation(BsonType.String)]
+		//[BsonRepresentation(BsonType.String)]
 		public Guid Id { get; set; }
 
 		[BsonElement("modelType")]

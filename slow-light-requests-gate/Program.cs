@@ -53,14 +53,14 @@ static void ConfigureServices(WebApplicationBuilder builder)
 	services.AddRabbitMqServices(configuration);
 	services.AddMessageServingServices();
 
-	//services.AddMongoDbServices(configuration);
-	//services.AddMongoDbRepositoriesServices(configuration);
+	services.AddMongoDbServices(configuration);
+	services.AddMongoDbRepositoriesServices(configuration);
 
 	services.AddPostgresDbServices(configuration);
 	services.AddPostgresDbRepositoriesServices(configuration);
 
 	services.AddValidationServices();
-	services.AddHostedServices();
+	services.AddHostedServices(builder.Configuration);
 	services.AddHeadersServices();
 
 	// Регистрируем GateConfiguration

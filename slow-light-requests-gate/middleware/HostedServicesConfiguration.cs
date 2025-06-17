@@ -3,15 +3,22 @@
 	static class HostedServicesConfiguration
 	{
 		/// <summary>
-		/// Регистрация фоновых сервисов приложения.
+		/// Регистрация фоновых сервисов приложения на основе параметра Database.
 		/// </summary>
-		public static IServiceCollection AddHostedServices(this IServiceCollection services)
+		public static IServiceCollection AddHostedServices(this IServiceCollection services, IConfiguration configuration)
 		{
-			//services.AddHostedService<QueueListenerRabbitMongoBackgroundService>();
-			//services.AddHostedService<OutboxMongoBackgroundService>();
+			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
 
-			services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
-			services.AddHostedService<OutboxPostgresBackgroundService>();
+			if (database == "postgres")
+			{
+				services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
+				services.AddHostedService<OutboxPostgresBackgroundService>();
+			}
+			else // mongo по умолчанию
+			{
+				services.AddHostedService<QueueListenerRabbitMongoBackgroundService>();
+				services.AddHostedService<OutboxMongoBackgroundService>();
+			}
 
 			return services;
 		}

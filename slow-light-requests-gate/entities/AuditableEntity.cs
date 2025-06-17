@@ -7,7 +7,7 @@ namespace lazy_light_requests_gate.entities
 	public abstract class AuditableEntity
 	{
 		[BsonId]
-		[BsonRepresentation(BsonType.ObjectId)]
+		//[BsonRepresentation(BsonType.ObjectId)]
 		public Guid Id { get; set; }
 		public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 		public DateTime? UpdatedAtUtc { get; set; }

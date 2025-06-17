@@ -26,11 +26,14 @@ public class GateConfiguration
 		var host = config["Host"]?.ToString() ?? "localhost";
 		var port = int.TryParse(config["Port"]?.ToString(), out var p) ? p : 5000;
 		var enableValidation = bool.TryParse(config["Validate"]?.ToString(), out var v) && v;
+		var database = config["Database"]?.ToString() ?? "mongo";
+
 
 		builder.Configuration["CompanyName"] = companyName;
 		builder.Configuration["Host"] = host;
 		builder.Configuration["Port"] = port.ToString();
 		builder.Configuration["Validate"] = enableValidation.ToString();
+		builder.Configuration["Database"] = database;
 
 		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:80";
