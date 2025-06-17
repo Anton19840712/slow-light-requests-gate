@@ -1,4 +1,7 @@
-﻿namespace lazy_light_requests_gate.middleware
+﻿using lazy_light_requests_gate.background;
+using lazy_light_requests_gate.repositories;
+
+namespace lazy_light_requests_gate.middleware
 {
 	static class HostedServicesConfiguration
 	{
@@ -12,12 +15,12 @@
 			if (database == "postgres")
 			{
 				services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
-				services.AddHostedService<OutboxPostgresBackgroundService>();
+				services.AddHostedService<OutboxBackgroundServiceBase<IPostgresRepository<OutboxMessage>>>();
 			}
 			else // mongo по умолчанию
 			{
 				services.AddHostedService<QueueListenerRabbitMongoBackgroundService>();
-				services.AddHostedService<OutboxMongoBackgroundService>();
+				services.AddHostedService<OutboxBackgroundServiceBase<IMongoRepository<OutboxMessage>>>();
 			}
 
 			return services;

@@ -1,7 +1,9 @@
-﻿namespace lazy_light_requests_gate.background
+﻿using lazy_light_requests_gate.repositories;
+
+namespace lazy_light_requests_gate.background
 {
-	public abstract class OutboxBackgroundServiceBase<TRepository> : BackgroundService
-			where TRepository : class
+	public class OutboxBackgroundServiceBase<TRepository> : BackgroundService
+			where TRepository : IBaseRepository<OutboxMessage>
 	{
 		protected readonly TRepository _outboxRepository;
 		protected readonly IRabbitMqService _rabbitMqService;
@@ -79,8 +81,19 @@
 			}
 		}
 
-		protected abstract Task<IEnumerable<OutboxMessage>> GetUnprocessedMessagesAsync();
-		protected abstract Task MarkMessageAsProcessedAsync(Guid messageId);
-		protected abstract Task<int> DeleteOldMessagesAsync(TimeSpan olderThan);
+		protected virtual async Task<IEnumerable<OutboxMessage>> GetUnprocessedMessagesAsync()
+		{
+			return await _outboxRepository.GetUnprocessedMessagesAsync();
+		}
+
+		protected virtual async Task MarkMessageAsProcessedAsync(Guid messageId)
+		{
+			await _outboxRepository.MarkMessageAsProcessedAsync(messageId);
+		}
+
+		protected virtual async Task<int> DeleteOldMessagesAsync(TimeSpan olderThan)
+		{
+			return await _outboxRepository.DeleteOldMessagesAsync(olderThan);
+		}
 	}
 }
