@@ -6,12 +6,12 @@ namespace lazy_light_requests_gate.middleware;
 /// Класс используется для предоставления возможности настройщику системы
 /// динамически задавать хост и порт самого динамического шлюза.
 /// </summary>
-public class GateConfiguration
+public static class GateConfiguration
 {
 	/// <summary>
 	/// Настройка динамических параметров шлюза и возврат HTTP/HTTPS адресов
 	/// </summary>
-	public async Task<(string HttpUrl, string HttpsUrl)> ConfigureDynamicGateAsync(string[] args, WebApplicationBuilder builder)
+	public static async Task<(string HttpUrl, string HttpsUrl)> ConfigureDynamicGateAsync(string[] args, WebApplicationBuilder builder)
 	{
 		var configFilePath = args.FirstOrDefault(a => a.StartsWith("--config="))?.Substring(9) ?? "rest.json";
 		var config = LoadConfiguration(configFilePath);
@@ -20,7 +20,7 @@ public class GateConfiguration
 		return await ConfigureRestGate(config, builder);
 	}
 
-	private async Task<(string HttpUrl, string HttpsUrl)> ConfigureRestGate(JObject config, WebApplicationBuilder builder)
+	private static async Task<(string HttpUrl, string HttpsUrl)> ConfigureRestGate(JObject config, WebApplicationBuilder builder)
 	{
 		var companyName = config["CompanyName"]?.ToString() ?? "default-company";
 		var host = config["Host"]?.ToString() ?? "localhost";

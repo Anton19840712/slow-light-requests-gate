@@ -9,6 +9,8 @@ Console.Title = "slow & light dynamic gate";
 var builder = WebApplication.CreateBuilder(args);
 
 LoggingConfiguration.ConfigureLogging(builder);
+// Конфигурация динамического шлюза, шин, баз данных:
+var (httpUrl, httpsUrl) = await GateConfiguration.ConfigureDynamicGateAsync(args, builder);
 
 ConfigureServices(builder);
 
@@ -16,9 +18,6 @@ var app = builder.Build();
 
 try
 {
-	// Настройка динамического шлюза (через зарегистрированный сервис)
-	var gateConfigurator = app.Services.GetRequiredService<GateConfiguration>();
-	var (httpUrl, httpsUrl) = await gateConfigurator.ConfigureDynamicGateAsync(args, builder);
 
 	await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(app.Configuration);
 
@@ -62,9 +61,6 @@ static void ConfigureServices(WebApplicationBuilder builder)
 	services.AddValidationServices();
 	services.AddHostedServices(configuration);
 	services.AddHeadersServices();
-
-	// Регистрируем GateConfiguration
-	services.AddSingleton<GateConfiguration>();
 
 	// Авторизация и аутентификация: на данный момент эта часть не используется. Написана для будущего.
 	services
