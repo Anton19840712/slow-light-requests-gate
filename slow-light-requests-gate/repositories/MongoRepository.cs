@@ -3,6 +3,7 @@ using lazy_light_requests_gate.entities;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Polly;
 using Serilog;
 using System.Linq.Expressions;
 
@@ -11,6 +12,7 @@ namespace lazy_light_requests_gate.repositories
 	public class MongoRepository<T> : IMongoRepository<T> where T : class
 	{
 		private readonly IMongoCollection<T> _collection;
+		private readonly IAsyncPolicy _retryPolicy;
 
 		public MongoRepository(
 			IMongoClient mongoClient,
@@ -20,6 +22,20 @@ namespace lazy_light_requests_gate.repositories
 
 			string collectionName = GetCollectionName(typeof(T), settings.Value);
 			_collection = database.GetCollection<T>(collectionName);
+
+			// Настройка retry политики для MongoDB операций
+			_retryPolicy = Policy
+				.Handle<MongoException>()
+				.Or<TimeoutException>()
+				.Or<MongoConnectionException>()
+				.WaitAndRetryAsync(
+					retryCount: 3,
+					sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+					onRetry: (outcome, duration, retryCount, context) =>
+					{
+						Log.Warning("MongoDB retry attempt {RetryCount} after {Duration}ms. Exception: {Exception}",
+							retryCount, duration.TotalMilliseconds, outcome.InnerException?.Message);
+					});
 
 			try
 			{
@@ -55,7 +71,7 @@ namespace lazy_light_requests_gate.repositories
 			await _collection.Find(filter).ToListAsync();
 
 		public async Task InsertAsync(T entity) =>
-			await _collection.InsertOneAsync(entity);
+			await _retryPolicy.ExecuteAsync(async () => await _collection.InsertOneAsync(entity));
 
 		public async Task UpdateAsync(string id, T updatedEntity)
 		{
@@ -143,7 +159,7 @@ namespace lazy_light_requests_gate.repositories
 
 		public async Task SaveMessageAsync(T message)
 		{
-			await _collection.InsertOneAsync(message);
+			await _retryPolicy.ExecuteAsync(async () => await _collection.InsertOneAsync(message));
 		}
 
 		public async Task UpdateMessageAsync(T message)
