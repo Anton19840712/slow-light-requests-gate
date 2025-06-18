@@ -143,16 +143,27 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 		using var connection = CreateConnection();
 		var cutoffTime = DateTime.UtcNow - olderThan;
 
-		// Сначала проверим сколько сообщений есть для удаления
+		// Настроим полли-ретрей с ограничением по количеству попыток и задержкой
+		AsyncRetryPolicy retryPolicy = Policy
+			.Handle<Exception>() // можно уточнить тип исключений, если нужно
+			.WaitAndRetryAsync(
+				retryCount: 3,
+				sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // экспоненциальная задержка: 2,4,8 сек
+				onRetry: (exception, timeSpan, retryCount, context) =>
+				{
+					Log.Warning(exception, "Ошибка при выполнении запроса к базе, попытка {RetryCount}, ждем {Delay}", retryCount, timeSpan);
+				});
+
 		var countSql = $"SELECT COUNT(*) FROM {_tableName} WHERE created_at < @cutoff AND is_processed = true";
-		var candidatesCount = await _retryPolicy.ExecuteAsync(() =>
+		var deleteSql = $"DELETE FROM {_tableName} WHERE created_at < @cutoff AND is_processed = true";
+
+		var candidatesCount = await retryPolicy.ExecuteAsync(() =>
 			connection.QuerySingleAsync<int>(countSql, new { cutoff = cutoffTime }));
 
 		Log.Information("PostgreSQL DeleteOldMessagesAsync: найдено {CandidatesCount} сообщений-кандидатов для удаления (созданы до {CutoffTime})",
 			candidatesCount, cutoffTime);
 
-		var deleteSql = $"DELETE FROM {_tableName} WHERE created_at < @cutoff AND is_processed = true";
-		var deletedCount = await _retryPolicy.ExecuteAsync(() =>
+		var deletedCount = await retryPolicy.ExecuteAsync(() =>
 			connection.ExecuteAsync(deleteSql, new { cutoff = cutoffTime }));
 
 		Log.Information("PostgreSQL DeleteOldMessagesAsync: удалено {DeletedCount} из {CandidatesCount} старых сообщений из {TableName}",
@@ -160,6 +171,7 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 
 		return deletedCount;
 	}
+
 
 	public async Task SaveMessageAsync(T message) => await InsertAsync(message);
 
