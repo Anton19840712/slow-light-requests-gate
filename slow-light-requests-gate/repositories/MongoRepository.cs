@@ -1,5 +1,5 @@
-﻿using lazy_light_requests_gate.configurationsettings;
-using lazy_light_requests_gate.entities;
+﻿using lazy_light_requests_gate.entities;
+using lazy_light_requests_gate.settings;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -40,7 +40,8 @@ namespace lazy_light_requests_gate.repositories
 			try
 			{
 				database.ListCollectionNames().ToList(); // Простой запрос для проверки подключения
-				Log.Information($"Успешное подключение к MongoDB в базе: {settings.Value.DatabaseName}, коллекция: {collectionName}");
+				// почему постоянно логируется:
+				// Log.Information($"Успешное подключение к MongoDB в базе: {settings.Value.DatabaseName}, коллекция: {collectionName}");
 			}
 			catch (Exception ex)
 			{

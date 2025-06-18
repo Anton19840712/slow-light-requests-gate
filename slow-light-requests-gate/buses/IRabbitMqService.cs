@@ -1,13 +1,7 @@
-﻿using RabbitMQ.Client;
+﻿using lazy_light_requests_gate.temp;
+using RabbitMQ.Client;
 
-public interface IRabbitMqService
+public interface IRabbitMqService : IMessageBusService
 {
-	Task PublishMessageAsync(
-		string queueName,
-		string routingKey,
-		string message);
-	Task<string> WaitForResponseAsync(
-		string queueName,
-		int timeoutMilliseconds = 15000);
-	IConnection CreateConnection();
+	IConnection CreateConnection();	
 }

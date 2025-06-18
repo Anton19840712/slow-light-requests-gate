@@ -1,6 +1,5 @@
 ﻿using lazy_light_requests_gate.entities;
 using lazy_light_requests_gate.repositories;
-using listenersrabbit;
 using lazy_light_requests_gate.listenersrabbit;
 
 namespace lazy_light_requests_gate.background

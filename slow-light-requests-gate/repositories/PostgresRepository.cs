@@ -1,8 +1,8 @@
 ﻿using System.Data;
 using System.Reflection;
 using Dapper;
-using lazy_light_requests_gate.configurationsettings;
 using lazy_light_requests_gate.entities;
+using lazy_light_requests_gate.settings;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Polly;
@@ -33,7 +33,7 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 		{
 			using var connection = new NpgsqlConnection(_connectionString);
 			connection.Open();
-			Log.Information($"Успешное подключение к PostgreSQL, таблица: {_tableName}");
+			// Log.Information($"Успешное подключение к PostgreSQL, таблица: {_tableName}");
 		}
 		catch (Exception ex)
 		{
@@ -106,11 +106,7 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 		Log.Information("PostgreSQL DeleteByTtlAsync: попытка удаления сообщений старше {CutoffTime} из таблицы {TableName}",
 			cutoffTime, _tableName);
 
-		var deletedCount = await _retryPolicy.ExecuteAsync(() =>
-			connection.ExecuteAsync(sql, new { cutoff = cutoffTime }));
-
-		Log.Information("PostgreSQL DeleteByTtlAsync: удалено {DeletedCount} старых сообщений из {TableName}",
-			deletedCount, _tableName);
+		var deletedCount = await _retryPolicy.ExecuteAsync(() => connection.ExecuteAsync(sql, new { cutoff = cutoffTime }));
 
 		return deletedCount;
 	}
@@ -140,9 +136,7 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 	{
 		using var connection = CreateConnection();
 
-		// cutoffTime — время, до которого считаем записи устаревшими
 		var cutoffTime = DateTime.UtcNow - olderThanFromNow;
-		Log.Information("cutoffTime (UTC): {CutoffTime}", cutoffTime);
 
 		// Подсчёт кандидатов на удаление
 		const string countSql = @"
@@ -152,18 +146,12 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 
 		var candidatesCount = await connection.QuerySingleAsync<int>(countSql, new { cutoff = cutoffTime });
 
-		Log.Information("PostgreSQL DeleteOldMessagesAsync: найдено {CandidatesCount} сообщений-кандидатов для удаления (созданы до {CutoffTime})",
-			candidatesCount, cutoffTime);
-
 		// Удаление записей
 		const string deleteSql = @"
 		DELETE FROM outbox_messages 
 		WHERE created_at < @cutoff AND is_processed = true";
 
 		var deletedCount = await connection.ExecuteAsync(deleteSql, new { cutoff = cutoffTime });
-
-		Log.Information("PostgreSQL DeleteOldMessagesAsync: удалено {DeletedCount} из {CandidatesCount} старых сообщений из outbox_messages",
-			deletedCount, candidatesCount);
 
 		return deletedCount;
 	}

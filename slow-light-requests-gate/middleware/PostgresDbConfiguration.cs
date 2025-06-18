@@ -1,10 +1,9 @@
-﻿using lazy_light_requests_gate.configurationsettings;
-using lazy_light_requests_gate.repositories;
+﻿using lazy_light_requests_gate.repositories;
 using Npgsql;
 using System.Data;
 using Serilog;
 using Dapper;
-using lazy_light_requests_gate.services;
+using lazy_light_requests_gate.settings;
 
 namespace lazy_light_requests_gate.middleware;
 

@@ -1,4 +1,4 @@
-﻿namespace lazy_light_requests_gate.processing
+﻿namespace lazy_light_requests_gate.messaging
 {
 	public interface IMessageProcessingServiceFactory
 	{

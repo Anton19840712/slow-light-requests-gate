@@ -1,4 +1,4 @@
-﻿using lazy_light_requests_gate.processing;
+﻿using lazy_light_requests_gate.messaging;
 using lazy_light_requests_gate.repositories;
 using lazy_light_requests_gate.services;
 
@@ -33,7 +33,7 @@ namespace lazy_light_requests_gate.background
 					var factory = scope.ServiceProvider.GetRequiredService<IMessageProcessingServiceFactory>();
 					var currentDatabase = factory.GetCurrentDatabaseType();
 
-					_logger.LogInformation("Processing outbox for database: {Database}", currentDatabase);
+					_logger.LogInformation("DynamicOutboxBackgroundService: starting cleaning, getting-unprocessed-messages, publishing from outbox of database: {Database}", currentDatabase);
 
 					if (currentDatabase == "postgres")
 					{

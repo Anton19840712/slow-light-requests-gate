@@ -1,7 +1,6 @@
-﻿using lazy_light_requests_gate.configurationsettings;
+﻿using lazy_light_requests_gate.buses;
 using lazy_light_requests_gate.listenersrabbit;
-using lazy_light_requests_gate.rabbitqueuesconnections;
-using listenersrabbit;
+using lazy_light_requests_gate.settings;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using Serilog;

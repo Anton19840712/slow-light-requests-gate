@@ -1,4 +1,4 @@
-﻿using lazy_light_requests_gate.processing;
+﻿using lazy_light_requests_gate.messaging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace lazy_light_requests_gate.сontrollers

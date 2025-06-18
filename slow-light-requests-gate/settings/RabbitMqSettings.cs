@@ -1,12 +1,16 @@
-﻿namespace lazy_light_requests_gate.configurationsettings
+﻿using lazy_light_requests_gate.temp;
+
+namespace lazy_light_requests_gate.settings
 {
-	public class RabbitMqSettings
+	public class RabbitMqSettings : MessageBusBaseSettings
 	{
 		public string HostName { get; set; }
 		public int Port { get; set; }
 		public string UserName { get; set; }
 		public string Password { get; set; }
 		public string VirtualHost { get; set; }
+		public string Heartbeat { get; set; }
+		public string QueueName { get; set; }
 		public Uri GetAmqpUri()
 		{
 			// VirtualHost может быть null или пустым, тогда используем /

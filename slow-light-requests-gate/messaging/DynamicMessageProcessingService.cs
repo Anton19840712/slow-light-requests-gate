@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.processing.lazy_light_requests_gate.processing;
 
-namespace lazy_light_requests_gate.processing;
+namespace lazy_light_requests_gate.messaging;
 
 public class DynamicMessageProcessingService : IMessageProcessingService
 {

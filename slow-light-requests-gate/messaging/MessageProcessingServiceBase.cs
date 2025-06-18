@@ -1,7 +1,7 @@
 ﻿using lazy_light_requests_gate.common;
 using lazy_light_requests_gate.entities;
 
-namespace lazy_light_requests_gate.processing
+namespace lazy_light_requests_gate.messaging
 {
 	public abstract class MessageProcessingServiceBase : IMessageProcessingService
 	{

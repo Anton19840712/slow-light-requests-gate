@@ -1,8 +1,7 @@
 ﻿using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
-using lazy_light_requests_gate.listenersrabbit;
 
-namespace listenersrabbit
+namespace lazy_light_requests_gate.listenersrabbit
 {
 	public class RabbitMqQueueListener : IRabbitMqQueueListener<RabbitMqQueueListener>
 	{

@@ -1,4 +1,5 @@
 ﻿using lazy_light_requests_gate.entities;
+using lazy_light_requests_gate.messaging;
 using lazy_light_requests_gate.repositories;
 
 namespace lazy_light_requests_gate.processing

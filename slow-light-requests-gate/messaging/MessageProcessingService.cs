@@ -1,7 +1,7 @@
 ﻿using lazy_light_requests_gate.entities;
 using lazy_light_requests_gate.repositories;
 
-namespace lazy_light_requests_gate.processing
+namespace lazy_light_requests_gate.messaging
 {
 	public class MessageProcessingService<TOutboxRepo, TIncidentRepo> : MessageProcessingServiceBase
 		where TOutboxRepo : IBaseRepository<OutboxMessage>

@@ -1,5 +1,5 @@
 ﻿using lazy_light_requests_gate.repositories;
-using lazy_light_requests_gate.processing;
+using lazy_light_requests_gate.messaging;
 
 namespace lazy_light_requests_gate.services
 {

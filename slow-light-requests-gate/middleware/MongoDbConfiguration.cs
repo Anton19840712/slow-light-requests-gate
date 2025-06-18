@@ -1,6 +1,6 @@
 ﻿using System.Security.Authentication;
-using lazy_light_requests_gate.configurationsettings;
 using lazy_light_requests_gate.repositories;
+using lazy_light_requests_gate.settings;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;

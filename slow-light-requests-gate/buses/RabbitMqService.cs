@@ -3,10 +3,11 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System.Text;
 using lazy_light_requests_gate.messaging;
+using lazy_light_requests_gate.temp;
 
-namespace lazy_light_requests_gate.rabbitqueuesconnections
+namespace lazy_light_requests_gate.buses
 {
-	public class RabbitMqService : IRabbitMqService, IMessageBrokerService
+	public class RabbitMqService : IRabbitMqService, IMessageBrokerService, IDisposable
 	{
 		private readonly IConnectionFactory _factory;
 		private readonly ILogger<RabbitMqService> _logger;
@@ -57,6 +58,8 @@ namespace lazy_light_requests_gate.rabbitqueuesconnections
 				throw new InvalidOperationException("Не удалось установить соединение с RabbitMQ.");
 			}
 		}
+
+		public string TransportName => throw new NotImplementedException();
 
 		// Метод для публикации сообщений
 		public async Task PublishMessageAsync(
@@ -118,6 +121,26 @@ namespace lazy_light_requests_gate.rabbitqueuesconnections
 
 			var completedTask = await Task.WhenAny(completionSource.Task, Task.Delay(timeoutMilliseconds));
 			return completedTask == completionSource.Task ? completionSource.Task.Result : null;
+		}
+
+		public Task<string> StartAsync(MessageBusBaseSettings config, CancellationToken cancellationToken)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task StopAsync(CancellationToken cancellationToken)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task<string> WaitForResponseAsync(string topic, int timeoutMilliseconds = 15000, CancellationToken cancellationToken = default)
+		{
+			throw new NotImplementedException();
+		}
+
+		public void Dispose()
+		{
+			throw new NotImplementedException();
 		}
 	}
 }

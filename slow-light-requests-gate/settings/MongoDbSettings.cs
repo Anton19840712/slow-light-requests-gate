@@ -1,4 +1,4 @@
-﻿namespace lazy_light_requests_gate.configurationsettings
+﻿namespace lazy_light_requests_gate.settings
 {
 	public class MongoDbSettings
 	{

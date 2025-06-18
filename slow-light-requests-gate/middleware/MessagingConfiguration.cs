@@ -1,4 +1,4 @@
-﻿using lazy_light_requests_gate.processing;
+﻿using lazy_light_requests_gate.messaging;
 using lazy_light_requests_gate.processing.lazy_light_requests_gate.processing;
 
 namespace lazy_light_requests_gate.middleware
