@@ -1,5 +1,5 @@
-﻿using lazy_light_requests_gate.buses;
-using lazy_light_requests_gate.configurationsettings;
+﻿
+using lazy_light_requests_gate.buses;
 using lazy_light_requests_gate.settings;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -27,7 +27,7 @@ namespace lazy_light_requests_gate.middleware
 				return kafkaSettings;
 			});
 
-			// Здесь будут добавлены сервисы для работы с Kafka
+			// Регистрируем KafkaService
 			services.AddSingleton<KafkaService>();
 
 			return services;

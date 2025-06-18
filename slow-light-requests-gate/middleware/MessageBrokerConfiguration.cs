@@ -10,14 +10,9 @@ namespace lazy_light_requests_gate.middleware
 		public static IServiceCollection AddMessageBrokerServices(this IServiceCollection services, IConfiguration configuration)
 		{
 			// Регистрируем фабрику
-			services.AddScoped<IMessageBrokerFactory, MessageBrokerFactory>();
+			services.AddSingleton<IMessageBrokerFactory, MessageBrokerFactory>();
 
-			// Регистрируем основной сервис через фабрику (динамически)
-			services.AddTransient<IMessageBrokerService>(provider =>
-			{
-				var factory = provider.GetRequiredService<IMessageBrokerFactory>();
-				return factory.CreateMessageBroker(factory.GetCurrentBrokerType());
-			});
+			// НЕ регистрируем IMessageBrokerService здесь - будем получать через фабрику напрямую
 
 			return services;
 		}

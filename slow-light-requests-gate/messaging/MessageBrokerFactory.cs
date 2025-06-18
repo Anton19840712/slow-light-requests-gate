@@ -29,7 +29,7 @@ namespace lazy_light_requests_gate.messaging
 			IMessageBrokerService service = type switch
 			{
 				"kafka" => _serviceProvider.GetRequiredService<KafkaService>(),
-				"rabbitmq" => _serviceProvider.GetRequiredService<RabbitMqService>(),
+				"rabbitmq" => _serviceProvider.GetRequiredService<IRabbitMqService>() as IMessageBrokerService,
 				_ => throw new ArgumentException($"Unsupported message broker type: {brokerType}")
 			};
 

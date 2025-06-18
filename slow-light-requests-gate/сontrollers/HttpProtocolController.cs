@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using lazy_light_requests_gate.headers;
+using lazy_light_requests_gate.messaging;
 using lazy_light_requests_gate.processing;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,7 @@ public class HttpProtocolController : ControllerBase
 	private readonly IHeaderValidationService _headerValidationService;
 	private readonly IMessageProcessingServiceFactory _messageProcessingServiceFactory;
 	private readonly IConfiguration _configuration;
+	private readonly IMessageBrokerFactory _messageBrokerFactory;
 
 	private string _message;
 
@@ -20,12 +22,14 @@ public class HttpProtocolController : ControllerBase
 		ILogger<HttpProtocolController> logger,
 		IHeaderValidationService headerValidationService,
 		IMessageProcessingServiceFactory messageProcessingServiceFactory,
-		IConfiguration configuration)
+		IConfiguration configuration,
+			IMessageBrokerFactory messageBrokerFactory)
 	{
 		_logger = logger;
 		_headerValidationService = headerValidationService;
 		_messageProcessingServiceFactory = messageProcessingServiceFactory;
 		_configuration = configuration;
+		_messageBrokerFactory = messageBrokerFactory;
 	}
 
 	//[Authorize] // в этой версии динамического шлюза мы отложили использование авторизации.
@@ -85,6 +89,8 @@ public class HttpProtocolController : ControllerBase
 		// пока мы отправляем запрос, если flow позволяет это сделать и была пройдена валидация.
 		var currentDatabaseType = _messageProcessingServiceFactory.GetCurrentDatabaseType();
 		var messageProcessingService = _messageProcessingServiceFactory.CreateMessageProcessingService(currentDatabaseType);
+
+		var messageBrokerService = _messageBrokerFactory.CreateMessageBroker(null); // null = использовать текущий тип
 
 		await messageProcessingService.ProcessIncomingMessageAsync(
 			_message,

@@ -92,7 +92,14 @@ namespace lazy_light_requests_gate.rabbitqueuesconnections
 			return PersistentConnection;
 		}
 
-		// Ожидание ответа с таймаутом, если ответ не получен, соединение прекращается
+		public string GetBrokerType()
+		{
+			return "rabbitmq";
+		}
+
+		/// <summary>
+		/// Ожидание ответа от удаленной очереди в течение указанного времени.
+		/// </summary>
 		public async Task<string> WaitForResponseAsync(string queueName, int timeoutMilliseconds = 15000)
 		{
 			using var channel = PersistentConnection.CreateModel();
@@ -112,7 +119,5 @@ namespace lazy_light_requests_gate.rabbitqueuesconnections
 			var completedTask = await Task.WhenAny(completionSource.Task, Task.Delay(timeoutMilliseconds));
 			return completedTask == completionSource.Task ? completionSource.Task.Result : null;
 		}
-
-		public string GetBrokerType() => "rabbitmq";
 	}
 }

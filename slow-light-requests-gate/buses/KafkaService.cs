@@ -1,4 +1,5 @@
-﻿using Confluent.Kafka;
+﻿
+using Confluent.Kafka;
 using lazy_light_requests_gate.messaging;
 using lazy_light_requests_gate.settings;
 using Microsoft.Extensions.Options;
