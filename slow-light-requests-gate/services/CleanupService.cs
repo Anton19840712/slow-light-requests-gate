@@ -18,10 +18,18 @@ namespace lazy_light_requests_gate.services
 			{
 				try
 				{
-					int deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromSeconds(Constants.DefaultTtlDifferenceSeconds));
-					if (deletedCount != 0)
+					// Увеличиваем TTL до 24 часов для тестирования
+					var deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromHours(24));
+
+					_logger.LogInformation("CleanupService: проверка старых сообщений завершена. Удалено: {DeletedCount} сообщений.", deletedCount);
+
+					if (deletedCount > 0)
 					{
-						_logger.LogInformation("Удалено {DeletedCount} старых сообщений из базы данных, коллекции outbox_messages.", deletedCount);
+						_logger.LogInformation("CleanupService: успешно удалено {DeletedCount} старых обработанных сообщений.", deletedCount);
+					}
+					else
+					{
+						_logger.LogDebug("CleanupService: старых обработанных сообщений для удаления не найдено.");
 					}
 				}
 				catch (Exception ex)

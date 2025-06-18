@@ -88,8 +88,8 @@ namespace lazy_light_requests_gate.background
 					}
 				}
 
-				// Очистка старых сообщений
-				await repository.DeleteOldMessagesAsync(TimeSpan.FromHours(24));
+				// Очистка выполняется в CleanupService, убираем дублирование
+				// await repository.DeleteOldMessagesAsync(TimeSpan.FromHours(24));
 			}
 			catch (Exception ex)
 			{
