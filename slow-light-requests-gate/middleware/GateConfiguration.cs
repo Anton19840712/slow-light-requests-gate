@@ -28,6 +28,7 @@ public static class GateConfiguration
 		var enableValidation = bool.TryParse(config["Validate"]?.ToString(), out var v) && v;
 		var database = config["Database"]?.ToString() ?? "mongo";
 		var bus = config["Bus"]?.ToString() ?? "rabbit";
+		var cleanupIntervalSeconds = int.TryParse(config["CleanupIntervalSeconds"]?.ToString(), out var c) ? c : 10;
 
 		builder.Configuration["CompanyName"] = companyName;
 		builder.Configuration["Host"] = host;
@@ -35,6 +36,7 @@ public static class GateConfiguration
 		builder.Configuration["Validate"] = enableValidation.ToString();
 		builder.Configuration["Database"] = database;
 		builder.Configuration["Bus"] = bus;
+		builder.Configuration["CleanupIntervalSeconds"] = cleanupIntervalSeconds.ToString();
 
 		// Настройка PostgreSQL из rest.json
 		var postgresSettings = config["PostgresDbSettings"];
@@ -94,6 +96,7 @@ public static class GateConfiguration
 		Console.WriteLine($"[INFO] - Database: {database}");
 		Console.WriteLine($"[INFO] - Bus: {bus}");
 		Console.WriteLine($"[INFO] - Validation: {enableValidation}");
+		Console.WriteLine($"[INFO] - Cleanup Interval: {cleanupIntervalSeconds} seconds");
 
 		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:80";

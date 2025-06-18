@@ -32,8 +32,39 @@ public static class PostgresDbConfiguration
 	{
 		var settings = new PostgresDbSettings();
 		configuration.GetSection("PostgresDbSettings").Bind(settings);
-		var connectionString = settings.GetConnectionString();
 
+		var dbName = settings.Database;
+		var masterConnectionString = new NpgsqlConnectionStringBuilder
+		{
+			Host = settings.Host,
+			Port = settings.Port,
+			Username = settings.Username,
+			Password = settings.Password,
+			Database = "postgres" // временно подключаемся к системной БД
+		}.ToString();
+
+		await using (var masterConnection = new NpgsqlConnection(masterConnectionString))
+		{
+			await masterConnection.OpenAsync();
+
+			// Проверяем, существует ли база
+			var exists = await masterConnection.ExecuteScalarAsync<int>(
+				"SELECT COUNT(*) FROM pg_database WHERE datname = @dbName", new { dbName });
+
+			if (exists == 0)
+			{
+				Log.Information("Создаётся база данных {Database}", dbName);
+				await masterConnection.ExecuteAsync($"CREATE DATABASE \"{dbName}\"");
+				Log.Information("База данных {Database} успешно создана", dbName);
+			}
+			else
+			{
+				Log.Information("База данных {Database} уже существует", dbName);
+			}
+		}
+
+		// Теперь подключаемся к целевой базе и создаём таблицы
+		var connectionString = settings.GetConnectionString();
 		await using var connection = new NpgsqlConnection(connectionString);
 		await connection.OpenAsync();
 

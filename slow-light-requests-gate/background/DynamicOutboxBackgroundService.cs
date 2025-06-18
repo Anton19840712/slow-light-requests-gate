@@ -23,6 +23,9 @@ namespace lazy_light_requests_gate.background
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
+			// Запускаем cleanup как параллельную задачу
+			var cleanupTask = StartCleanupTask(stoppingToken);
+
 			while (!stoppingToken.IsCancellationRequested)
 			{
 				try
@@ -36,14 +39,12 @@ namespace lazy_light_requests_gate.background
 					if (currentDatabase == "postgres")
 					{
 						var postgresRepo = scope.ServiceProvider.GetRequiredService<IPostgresRepository<OutboxMessage>>();
-						var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<IPostgresRepository<OutboxMessage>>>();
-						await ProcessOutboxMessages(postgresRepo, cleanupService, stoppingToken);
+						await ProcessOutboxMessages(postgresRepo, stoppingToken);
 					}
 					else
 					{
 						var mongoRepo = scope.ServiceProvider.GetRequiredService<IMongoRepository<OutboxMessage>>();
-						var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<IMongoRepository<OutboxMessage>>>();
-						await ProcessOutboxMessages(mongoRepo, cleanupService, stoppingToken);
+						await ProcessOutboxMessages(mongoRepo, stoppingToken);
 					}
 				}
 				catch (Exception ex)
@@ -53,9 +54,44 @@ namespace lazy_light_requests_gate.background
 
 				await Task.Delay(_delay, stoppingToken);
 			}
+
+			// Ждем завершения cleanup задачи
+			await cleanupTask;
 		}
 
-		private async Task ProcessOutboxMessages<TRepo>(TRepo repository, ICleanupService<TRepo> cleanupService, CancellationToken cancellationToken)
+		private async Task StartCleanupTask(CancellationToken stoppingToken)
+		{
+			while (!stoppingToken.IsCancellationRequested)
+			{
+				try
+				{
+					using var scope = _serviceScopeFactory.CreateScope();
+					var factory = scope.ServiceProvider.GetRequiredService<IMessageProcessingServiceFactory>();
+					var currentDatabase = factory.GetCurrentDatabaseType();
+
+					if (currentDatabase == "postgres")
+					{
+						var postgresRepo = scope.ServiceProvider.GetRequiredService<IPostgresRepository<OutboxMessage>>();
+						var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<IPostgresRepository<OutboxMessage>>>();
+						await cleanupService.StartCleanupAsync(postgresRepo, stoppingToken);
+					}
+					else
+					{
+						var mongoRepo = scope.ServiceProvider.GetRequiredService<IMongoRepository<OutboxMessage>>();
+						var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<IMongoRepository<OutboxMessage>>>();
+						await cleanupService.StartCleanupAsync(mongoRepo, stoppingToken);
+					}
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Error in cleanup task");
+					// Небольшая пауза перед повторной попыткой
+					await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+				}
+			}
+		}
+
+		private async Task ProcessOutboxMessages<TRepo>(TRepo repository, CancellationToken cancellationToken)
 			where TRepo : IBaseRepository<OutboxMessage>
 		{
 			try
@@ -76,6 +112,7 @@ namespace lazy_light_requests_gate.background
 
 						message.IsProcessed = true;
 						message.ProcessedAt = DateTime.UtcNow;
+
 						await repository.UpdateMessageAsync(message);
 
 						_logger.LogInformation("Message {MessageId} published to queue {Queue}",

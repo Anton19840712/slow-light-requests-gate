@@ -6,10 +6,12 @@ namespace lazy_light_requests_gate.services
 	public class CleanupService<TRepository> : ICleanupService<TRepository> where TRepository : IBaseRepository<OutboxMessage>
 	{
 		private readonly ILogger<CleanupService<TRepository>> _logger;
+		private readonly IConfiguration _configuration;
 
-		public CleanupService(ILogger<CleanupService<TRepository>> logger)
+		public CleanupService(ILogger<CleanupService<TRepository>> logger, IConfiguration configuration)
 		{
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+			_configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 		}
 
 		public async Task StartCleanupAsync(TRepository repository, CancellationToken cancellationToken)
@@ -18,7 +20,8 @@ namespace lazy_light_requests_gate.services
 			{
 				try
 				{
-					var deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromSeconds(10));
+					var cleanupIntervalSeconds = int.TryParse(_configuration["CleanupIntervalSeconds"], out var interval) ? interval : 1000;
+					var deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromSeconds(cleanupIntervalSeconds));
 
 					_logger.LogInformation("CleanupService: проверка старых сообщений завершена. Удалено: {DeletedCount} сообщений.", deletedCount);
 

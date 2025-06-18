@@ -139,33 +139,31 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 	public async Task<int> DeleteOldMessagesAsync(TimeSpan olderThan)
 	{
 		using var connection = CreateConnection();
+
+		// cutoffTime — время, до которого считаем записи устаревшими
 		var cutoffTime = DateTime.UtcNow - olderThan;
+		Log.Information("cutoffTime (UTC): {CutoffTime}", cutoffTime);
 
-		// Настроим полли-ретрей с ограничением по количеству попыток и задержкой
-		AsyncRetryPolicy retryPolicy = Policy
-			.Handle<Exception>() // можно уточнить тип исключений, если нужно
-			.WaitAndRetryAsync(
-				retryCount: 3,
-				sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // экспоненциальная задержка: 2,4,8 сек
-				onRetry: (exception, timeSpan, retryCount, context) =>
-				{
-					Log.Warning(exception, "Ошибка при выполнении запроса к базе, попытка {RetryCount}, ждем {Delay}", retryCount, timeSpan);
-				});
+		// Подсчёт кандидатов на удаление
+		const string countSql = @"
+		SELECT COUNT(*) 
+		FROM outbox_messages 
+		WHERE created_at < @cutoff AND is_processed = true";
 
-		var countSql = $"SELECT COUNT(*) FROM {_tableName} WHERE created_at < @cutoff AND is_processed = true";
-		var deleteSql = $"DELETE FROM {_tableName} WHERE created_at < @cutoff AND is_processed = true";
-
-		var candidatesCount = await retryPolicy.ExecuteAsync(() =>
-			connection.QuerySingleAsync<int>(countSql, new { cutoff = cutoffTime }));
+		var candidatesCount = await connection.QuerySingleAsync<int>(countSql, new { cutoff = cutoffTime });
 
 		Log.Information("PostgreSQL DeleteOldMessagesAsync: найдено {CandidatesCount} сообщений-кандидатов для удаления (созданы до {CutoffTime})",
 			candidatesCount, cutoffTime);
 
-		var deletedCount = await retryPolicy.ExecuteAsync(() =>
-			connection.ExecuteAsync(deleteSql, new { cutoff = cutoffTime }));
+		// Удаление записей
+		const string deleteSql = @"
+		DELETE FROM outbox_messages 
+		WHERE created_at < @cutoff AND is_processed = true";
 
-		Log.Information("PostgreSQL DeleteOldMessagesAsync: удалено {DeletedCount} из {CandidatesCount} старых сообщений из {TableName}",
-			deletedCount, candidatesCount, _tableName);
+		var deletedCount = await connection.ExecuteAsync(deleteSql, new { cutoff = cutoffTime });
+
+		Log.Information("PostgreSQL DeleteOldMessagesAsync: удалено {DeletedCount} из {CandidatesCount} старых сообщений из outbox_messages",
+			deletedCount, candidatesCount);
 
 		return deletedCount;
 	}

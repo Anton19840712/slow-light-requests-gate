@@ -4,8 +4,9 @@
   "Host": "127.0.0.1",
   "Port": "5000",
   "Validate": true,  
-  "Database": "mongo",
+  "Database": "postgres",
   "Bus": "rabbit",
+  "CleanupIntervalSeconds": 36000,
   "PostgresDbSettings": {
     "Host": "localhost",
     "Port": 5432,
