@@ -2,76 +2,118 @@
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System.Text;
-using lazy_light_requests_gate.messaging;
 using lazy_light_requests_gate.temp;
+using lazy_light_requests_gate.settings;
 
 namespace lazy_light_requests_gate.buses
 {
-	public class RabbitMqService : IRabbitMqService, IMessageBrokerService, IDisposable
+	/// <summary>
+	/// Сервис RabbitMQ с устойчивым соединением и поддержкой публикации сообщений.
+	/// </summary>
+	public class RabbitMqService : IRabbitMqService
 	{
-		private readonly IConnectionFactory _factory;
 		private readonly ILogger<RabbitMqService> _logger;
 		private IConnection _persistentConnection;
+		private ConnectionFactory _factory;
 
-		public RabbitMqService(ILogger<RabbitMqService> logger, IConnectionFactory factory)
+		private const int MaxRetryAttempts = 5;
+		private const int RetryDelayMilliseconds = 3000;
+
+		public RabbitMqService(ILogger<RabbitMqService> logger)
 		{
 			_logger = logger;
-			_factory = factory; // Теперь используем factory из DI-контейнера
+		}
+		public string TransportName => "rabbitmq";
+
+		public async Task<string> StartAsync(MessageBusBaseSettings config, CancellationToken cancellationToken)
+		{
+			try
+			{
+				if (config is not RabbitMqSettings rabbitMqConfig)
+					throw new ArgumentException("StartAsync: Конфигурация должна быть типа RabbitMqSettings");
+
+				_factory = new ConnectionFactory
+				{
+					Uri = rabbitMqConfig.GetAmqpUri(),
+					UserName = rabbitMqConfig.UserName,
+					Password = rabbitMqConfig.Password,
+					VirtualHost = rabbitMqConfig.VirtualHost,
+					RequestedHeartbeat = TimeSpan.FromSeconds(ushort.TryParse(rabbitMqConfig.Heartbeat?.ToString(), out var hb) ? hb : 60)
+				};
+
+				_ = PersistentConnection;
+
+				_logger.LogInformation("RabbitMqService: Установлена конфигурация подключения {User}@{Host}:{Port}-{VirtualHost}",
+					_factory.UserName, _factory.HostName, _factory.Port, _factory.VirtualHost);
+				await Task.Delay(0);
+				return "RabbitMQ connection initialized successfully.";
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "RabbitMqService: Ошибка при инициализации подключения");
+				throw;
+			}
 		}
 
-		// Свойство для получения постоянного соединения
+		public Task StopAsync(CancellationToken cancellationToken)
+		{
+			if (_persistentConnection != null && _persistentConnection.IsOpen)
+			{
+				_persistentConnection.Close();
+				_persistentConnection.Dispose();
+				_persistentConnection = null;
+				_logger.LogInformation("RabbitMqService: Подключение успешно закрыто.");
+			}
+			else
+			{
+				_logger.LogWarning("RabbitMqService: Подключение уже было закрыто или не было открыто.");
+			}
+
+			return Task.CompletedTask;
+		}
+
 		private IConnection PersistentConnection
 		{
 			get
 			{
-				if (_persistentConnection != null)
+				if (_persistentConnection != null && _persistentConnection.IsOpen)
 					return _persistentConnection;
-				// TODO: вынести в конфигурацию
-				var attempt = 0;
-				var maxAttempts = 5;
-				var delayMs = 3000;
 
-				while (attempt < maxAttempts)
+				int attempt = 0;
+
+				while (attempt < MaxRetryAttempts)
 				{
 					try
 					{
 						_persistentConnection = _factory.CreateConnection();
-
-						_logger.LogInformation("RabbitMqService: попытка установления подключения к сетевой шине успешна.");
+						_logger.LogInformation("RabbitMqService: Подключение к RabbitMQ успешно установлено.");
 						return _persistentConnection;
 					}
 					catch (BrokerUnreachableException ex)
 					{
 						attempt++;
-						_logger.LogWarning($"Попытка {attempt}/{maxAttempts}: не удалось подключиться к RabbitMQ ({ex.Message}).");
+						_logger.LogWarning(ex, "Попытка {Attempt}/{MaxAttempts}: не удалось подключиться к RabbitMQ.", attempt, MaxRetryAttempts);
 
-						if (attempt == maxAttempts)
+						if (attempt == MaxRetryAttempts)
 						{
-							_logger.LogError("Исчерпаны все попытки подключения к RabbitMQ. Ты че, docker не запустил?");
+							_logger.LogError("RabbitMqService: Все попытки подключения исчерпаны.");
 							throw;
 						}
 
-						Thread.Sleep(delayMs);
+						Task.Delay(RetryDelayMilliseconds).Wait();
 					}
 				}
 
-				throw new InvalidOperationException("Не удалось установить соединение с RabbitMQ.");
+				throw new InvalidOperationException("RabbitMqService: Не удалось установить соединение.");
 			}
 		}
 
-		public string TransportName => throw new NotImplementedException();
-
-		// Метод для публикации сообщений
-		public async Task PublishMessageAsync(
-			string queueName,
-			string routingKey,
-			string message)
+		public async Task PublishMessageAsync(string queueName, string routingKey, string message)
 		{
 			await Task.Run(() =>
 			{
 				using var channel = PersistentConnection.CreateModel();
 
-				// Очередь теперь постоянная
 				channel.QueueDeclare(
 					queue: queueName,
 					durable: true,
@@ -81,66 +123,44 @@ namespace lazy_light_requests_gate.buses
 
 				var body = Encoding.UTF8.GetBytes(message);
 
-				// Сообщение теперь тоже персистентное
 				var properties = channel.CreateBasicProperties();
 				properties.Persistent = true;
+				properties.Headers = new Dictionary<string, object>
+				{
+					["key"] = routingKey
+				};
 
 				channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: properties, body: body);
+
+				_logger.LogInformation("RabbitMqService: Сообщение опубликовано в очередь {Queue}", queueName);
 			});
 		}
 
-		// Метод для возврата существующего соединения
-		public IConnection CreateConnection()
-		{
-			return PersistentConnection;
-		}
+		public IConnection CreateConnection() => PersistentConnection;
 
-		public string GetBrokerType()
-		{
-			return "rabbitmq";
-		}
-
-		/// <summary>
-		/// Ожидание ответа от удаленной очереди в течение указанного времени.
-		/// </summary>
-		public async Task<string> WaitForResponseAsync(string queueName, int timeoutMilliseconds = 15000)
+		public async Task<string> WaitForResponseAsync(string queueName, int timeoutMilliseconds = 15000, CancellationToken cancellationToken = default)
 		{
 			using var channel = PersistentConnection.CreateModel();
 			channel.QueueDeclare(queue: queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
 
-			var consumer = new EventingBasicConsumer(channel);
 			var completionSource = new TaskCompletionSource<string>();
+			var consumer = new EventingBasicConsumer(channel);
 
-			consumer.Received += (model, ea) =>
+			consumer.Received += (_, ea) =>
 			{
 				var response = Encoding.UTF8.GetString(ea.Body.ToArray());
-				completionSource.SetResult(response);
+				completionSource.TrySetResult(response);
 			};
 
 			channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
 
-			var completedTask = await Task.WhenAny(completionSource.Task, Task.Delay(timeoutMilliseconds));
-			return completedTask == completionSource.Task ? completionSource.Task.Result : null;
-		}
+			var completedTask = await Task.WhenAny(completionSource.Task, Task.Delay(timeoutMilliseconds, cancellationToken));
 
-		public Task<string> StartAsync(MessageBusBaseSettings config, CancellationToken cancellationToken)
-		{
-			throw new NotImplementedException();
-		}
+			if (completedTask == completionSource.Task)
+				return await completionSource.Task;
 
-		public Task StopAsync(CancellationToken cancellationToken)
-		{
-			throw new NotImplementedException();
-		}
-
-		public Task<string> WaitForResponseAsync(string topic, int timeoutMilliseconds = 15000, CancellationToken cancellationToken = default)
-		{
-			throw new NotImplementedException();
-		}
-
-		public void Dispose()
-		{
-			throw new NotImplementedException();
+			_logger.LogWarning("RabbitMqService: Таймаут ожидания ответа из очереди {Queue}", queueName);
+			return null;
 		}
 	}
 }
