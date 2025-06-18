@@ -136,8 +136,6 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 			connection.ExecuteAsync(sql, new { messageId, now = DateTime.UtcNow }));
 	}
 
-
-
 	public async Task<int> DeleteOldMessagesAsync(TimeSpan olderThan)
 	{
 		using var connection = CreateConnection();

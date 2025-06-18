@@ -4,6 +4,38 @@
   "Host": "127.0.0.1",
   "Port": "5000",
   "Validate": true,  
-  "Database":"mongo",
-  "Bus":"kafka"
+  "Database": "mongo",
+  "Bus": "rabbit",
+  "PostgresDbSettings": {
+    "Host": "localhost",
+    "Port": 5432,
+    "Username": "postgres",
+    "Password": "mysecret",
+    "Database": "GatewayDB"
+  },
+  "MongoDbSettings": {
+    "User": "root",
+    "Password": "root",
+    "ConnectionString": "mongodb://root:root@172.16.211.20:27017/?authSource=admin",
+    "DatabaseName": "GatewayDB",
+    "Collections": {
+      "QueueCollection": "QueueEntities",
+      "OutboxCollection": "OutboxMessages",
+      "IncidentCollection": "IncidentEntities"
+    }
+  },
+  "RabbitMqSettings": {
+    "HostName": "172.16.211.18",
+    "Port": 5672,
+    "UserName": "admin",
+    "Password": "admin",
+    "VirtualHost": "termidesk"
+  },
+  "KafkaSettings": {
+    "BootstrapServers": "localhost:9092",
+    "GroupId": "slow-light-requests-gate-group",
+    "SecurityProtocol": "Plaintext",
+    "SessionTimeoutMs": 6000,
+    "EnableAutoCommit": true
+  }
 }

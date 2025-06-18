@@ -27,15 +27,73 @@ public static class GateConfiguration
 		var port = int.TryParse(config["Port"]?.ToString(), out var p) ? p : 5000;
 		var enableValidation = bool.TryParse(config["Validate"]?.ToString(), out var v) && v;
 		var database = config["Database"]?.ToString() ?? "mongo";
-		var bus = config["Bus"]?.ToString() ?? "rabbit";		
+		var bus = config["Bus"]?.ToString() ?? "rabbit";
 
 		builder.Configuration["CompanyName"] = companyName;
 		builder.Configuration["Host"] = host;
 		builder.Configuration["Port"] = port.ToString();
 		builder.Configuration["Validate"] = enableValidation.ToString();
 		builder.Configuration["Database"] = database;
-
 		builder.Configuration["Bus"] = bus;
+
+		// Настройка PostgreSQL из rest.json
+		var postgresSettings = config["PostgresDbSettings"];
+		if (postgresSettings != null)
+		{
+			builder.Configuration["PostgresDbSettings:Host"] = postgresSettings["Host"]?.ToString() ?? "localhost";
+			builder.Configuration["PostgresDbSettings:Port"] = postgresSettings["Port"]?.ToString() ?? "5432";
+			builder.Configuration["PostgresDbSettings:Username"] = postgresSettings["Username"]?.ToString() ?? "postgres";
+			builder.Configuration["PostgresDbSettings:Password"] = postgresSettings["Password"]?.ToString() ?? "";
+			builder.Configuration["PostgresDbSettings:Database"] = postgresSettings["Database"]?.ToString() ?? "GatewayDB";
+		}
+
+		// Настройка MongoDB из rest.json
+		var mongoSettings = config["MongoDbSettings"];
+		if (mongoSettings != null)
+		{
+			builder.Configuration["MongoDbSettings:User"] = mongoSettings["User"]?.ToString() ?? "";
+			builder.Configuration["MongoDbSettings:Password"] = mongoSettings["Password"]?.ToString() ?? "";
+			builder.Configuration["MongoDbSettings:ConnectionString"] = mongoSettings["ConnectionString"]?.ToString() ?? "";
+			builder.Configuration["MongoDbSettings:DatabaseName"] = mongoSettings["DatabaseName"]?.ToString() ?? "GatewayDB";
+
+			var collections = mongoSettings["Collections"];
+			if (collections != null)
+			{
+				builder.Configuration["MongoDbSettings:Collections:QueueCollection"] = collections["QueueCollection"]?.ToString() ?? "QueueEntities";
+				builder.Configuration["MongoDbSettings:Collections:OutboxCollection"] = collections["OutboxCollection"]?.ToString() ?? "OutboxMessages";
+				builder.Configuration["MongoDbSettings:Collections:IncidentCollection"] = collections["IncidentCollection"]?.ToString() ?? "IncidentEntities";
+			}
+		}
+
+		// Настройка RabbitMQ из rest.json
+		var rabbitSettings = config["RabbitMqSettings"];
+		if (rabbitSettings != null)
+		{
+			builder.Configuration["RabbitMqSettings:HostName"] = rabbitSettings["HostName"]?.ToString() ?? "localhost";
+			builder.Configuration["RabbitMqSettings:Port"] = rabbitSettings["Port"]?.ToString() ?? "5672";
+			builder.Configuration["RabbitMqSettings:UserName"] = rabbitSettings["UserName"]?.ToString() ?? "guest";
+			builder.Configuration["RabbitMqSettings:Password"] = rabbitSettings["Password"]?.ToString() ?? "guest";
+			builder.Configuration["RabbitMqSettings:VirtualHost"] = rabbitSettings["VirtualHost"]?.ToString() ?? "/";
+		}
+
+		// Настройка Kafka из rest.json
+		var kafkaSettings = config["KafkaSettings"];
+		if (kafkaSettings != null)
+		{
+			builder.Configuration["KafkaSettings:BootstrapServers"] = kafkaSettings["BootstrapServers"]?.ToString() ?? "localhost:9092";
+			builder.Configuration["KafkaSettings:GroupId"] = kafkaSettings["GroupId"]?.ToString() ?? "slow-light-requests-gate-group";
+			builder.Configuration["KafkaSettings:SecurityProtocol"] = kafkaSettings["SecurityProtocol"]?.ToString() ?? "Plaintext";
+			builder.Configuration["KafkaSettings:SessionTimeoutMs"] = kafkaSettings["SessionTimeoutMs"]?.ToString() ?? "6000";
+			builder.Configuration["KafkaSettings:EnableAutoCommit"] = kafkaSettings["EnableAutoCommit"]?.ToString() ?? "true";
+		}
+
+		// Логирование конфигурации
+		Console.WriteLine($"[INFO] Конфигурация загружена:");
+		Console.WriteLine($"[INFO] - Company: {companyName}");
+		Console.WriteLine($"[INFO] - Host: {host}:{port}");
+		Console.WriteLine($"[INFO] - Database: {database}");
+		Console.WriteLine($"[INFO] - Bus: {bus}");
+		Console.WriteLine($"[INFO] - Validation: {enableValidation}");
 
 		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:80";
