@@ -7,11 +7,21 @@ namespace lazy_light_requests_gate.services
 	{
 		private readonly ILogger<CleanupService<TRepository>> _logger;
 		private readonly IConfiguration _configuration;
-
+		private readonly int _delay;
 		public CleanupService(ILogger<CleanupService<TRepository>> logger, IConfiguration configuration)
 		{
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 			_configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+			if (!int.TryParse(_configuration["CleanupIntervalSeconds"], out _delay))
+			{
+				_delay = 10; // значение по умолчанию
+				_logger.LogWarning("Не удалось прочитать CleanupIntervalSeconds. Установлено значение по умолчанию: 10 секунд");
+			}
+			else
+			{
+				_logger.LogInformation("Инициализирован с интервалом очистки: {Delay} секунд", _delay);
+			}
 		}
 
 		public async Task StartCleanupAsync(TRepository repository, CancellationToken cancellationToken)
@@ -41,8 +51,8 @@ namespace lazy_light_requests_gate.services
 					_logger.LogError(ex, "Ошибка при очистке старых сообщений Outbox.");
 				}
 
-				// Интервал между запусками очистки
-				await Task.Delay(TimeSpan.FromSeconds(Constants.DefaultCleanupIntervalSeconds), cancellationToken);
+				// Интервал между запусками очистки:
+				await Task.Delay(TimeSpan.FromSeconds(_delay), cancellationToken);
 			}
 		}
 	}
