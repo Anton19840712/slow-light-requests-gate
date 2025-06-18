@@ -35,32 +35,6 @@ public static class GateConfiguration
 		builder.Configuration["Validate"] = enableValidation.ToString();
 		builder.Configuration["Database"] = database;
 
-		// Настраиваем оба типа БД для возможности переключения
-		if (database == "postgres")
-		{
-			builder.Services.AddPostgresDbServices(builder.Configuration);
-			builder.Services.AddPostgresDbRepositoriesServices(builder.Configuration);
-		}
-
-		// Всегда настраиваем MongoDB для возможности переключения
-		builder.Services.AddMongoDbServices(builder.Configuration);
-		builder.Services.AddMongoDbRepositoriesServices(builder.Configuration);
-
-		builder.Configuration["Database"] = database;
-		// Настраиваем шины сообщений для возможности переключения
-		if (bus == "rabbit")
-		{
-			builder.Services.AddRabbitMqServices(builder.Configuration);
-		}
-		else if (bus == "kafka")
-		{
-			builder.Services.AddKafkaServices(builder.Configuration);
-		}
-
-		// Всегда настраиваем обе шины для возможности переключения
-		builder.Services.AddRabbitMqServices(builder.Configuration);
-		builder.Services.AddKafkaServices(builder.Configuration);
-
 		builder.Configuration["Bus"] = bus;
 
 		// ports here were hardcoded:
