@@ -1,24 +1,37 @@
 ﻿using lazy_light_requests_gate.processing;
 using lazy_light_requests_gate.repositories;
 using lazy_light_requests_gate.services;
+using Microsoft.Extensions.Configuration;
 
 namespace lazy_light_requests_gate.background
 {
 	public class DynamicOutboxBackgroundService : BackgroundService
 	{
+		private readonly IConfiguration _configuration;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IRabbitMqService _rabbitMqService;
 		private readonly ILogger<DynamicOutboxBackgroundService> _logger;
-		private readonly TimeSpan _delay = TimeSpan.FromSeconds(30);
-
+		private readonly int _delay;
 		public DynamicOutboxBackgroundService(
-			IServiceScopeFactory serviceScopeFactory,
-			IRabbitMqService rabbitMqService,
-			ILogger<DynamicOutboxBackgroundService> logger)
+				IConfiguration configuration,
+				IServiceScopeFactory serviceScopeFactory,
+				IRabbitMqService rabbitMqService,
+				ILogger<DynamicOutboxBackgroundService> logger)
 		{
+			_configuration = configuration;
 			_serviceScopeFactory = serviceScopeFactory;
 			_rabbitMqService = rabbitMqService;
 			_logger = logger;
+
+			if (!int.TryParse(_configuration["CleanupIntervalSeconds"], out _delay))
+			{
+				_delay = 10; // значение по умолчанию
+				_logger.LogWarning("Не удалось прочитать CleanupIntervalSeconds. Установлено значение по умолчанию: 10 секунд");
+			}
+			else
+			{
+				_logger.LogInformation("Инициализирован с интервалом очистки: {Delay} секунд", _delay);
+			}
 		}
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)

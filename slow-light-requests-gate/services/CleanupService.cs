@@ -20,10 +20,12 @@ namespace lazy_light_requests_gate.services
 			{
 				try
 				{
-					var cleanupIntervalSeconds = int.TryParse(_configuration["CleanupIntervalSeconds"], out var interval) ? interval : 1000;
-					var deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromSeconds(cleanupIntervalSeconds));
+					// Время жизни сообщений (после которого они удаляются)
+					var messageTtlSeconds = int.TryParse(_configuration["MessageTtlSeconds"], out var ttl) ? ttl : 10;
+					var deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromSeconds(messageTtlSeconds));
 
-					_logger.LogInformation("CleanupService: проверка старых сообщений завершена. Удалено: {DeletedCount} сообщений.", deletedCount);
+					_logger.LogInformation("CleanupService: проверка старых сообщений завершена. Удалено: {DeletedCount} сообщений (TTL: {TtlSeconds} сек).",
+						deletedCount, messageTtlSeconds);
 
 					if (deletedCount > 0)
 					{
@@ -39,6 +41,7 @@ namespace lazy_light_requests_gate.services
 					_logger.LogError(ex, "Ошибка при очистке старых сообщений Outbox.");
 				}
 
+				// Интервал между запусками очистки
 				await Task.Delay(TimeSpan.FromSeconds(Constants.DefaultCleanupIntervalSeconds), cancellationToken);
 			}
 		}

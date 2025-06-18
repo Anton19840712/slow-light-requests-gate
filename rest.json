@@ -6,7 +6,8 @@
   "Validate": true,  
   "Database": "postgres",
   "Bus": "rabbit",
-  "CleanupIntervalSeconds": 36000,
+  "CleanupIntervalSeconds": 10,
+  "MessageTtlSeconds": 10,
   "PostgresDbSettings": {
     "Host": "localhost",
     "Port": 5432,
