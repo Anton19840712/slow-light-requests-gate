@@ -18,8 +18,7 @@ namespace lazy_light_requests_gate.services
 			{
 				try
 				{
-					// Увеличиваем TTL до 24 часов для тестирования
-					var deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromHours(24));
+					var deletedCount = await repository.DeleteOldMessagesAsync(TimeSpan.FromSeconds(10));
 
 					_logger.LogInformation("CleanupService: проверка старых сообщений завершена. Удалено: {DeletedCount} сообщений.", deletedCount);
 

@@ -12,8 +12,6 @@ namespace lazy_light_requests_gate.middleware
 			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
 
 			// Регистрируем обычные сервисы для возможности их получения через DI
-			services.AddTransient<OutboxBackgroundServicePostgres>();
-			services.AddTransient<OutboxBackgroundServiceMongo>();
 			services.AddTransient<QueueListenerRabbitPostgresBackgroundService>();
 			services.AddTransient<QueueListenerBackgroundServiceMongo>();
 
