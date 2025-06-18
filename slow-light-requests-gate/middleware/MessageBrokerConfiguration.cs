@@ -9,22 +9,15 @@ namespace lazy_light_requests_gate.middleware
 	{
 		public static IServiceCollection AddMessageBrokerServices(this IServiceCollection services, IConfiguration configuration)
 		{
-			var messageBroker = configuration["MessageBroker"]?.ToString()?.ToLower() ?? "rabbitmq";
-
 			// Регистрируем фабрику
 			services.AddScoped<IMessageBrokerFactory, MessageBrokerFactory>();
 
-			// Регистрируем основной сервис на основе конфигурации
-			if (messageBroker == "kafka")
+			// Регистрируем основной сервис через фабрику (динамически)
+			services.AddTransient<IMessageBrokerService>(provider =>
 			{
-				services.AddTransient<IMessageBrokerService>(provider =>
-					provider.GetRequiredService<KafkaService>());
-			}
-			else
-			{
-				services.AddTransient<IMessageBrokerService>(provider =>
-					provider.GetRequiredService<RabbitMqService>());
-			}
+				var factory = provider.GetRequiredService<IMessageBrokerFactory>();
+				return factory.CreateMessageBroker(factory.GetCurrentBrokerType());
+			});
 
 			return services;
 		}
