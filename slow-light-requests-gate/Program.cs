@@ -18,7 +18,6 @@ var app = builder.Build();
 
 try
 {
-
 	await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(app.Configuration);
 
 	// Применяем настройки приложения
@@ -47,10 +46,7 @@ static void ConfigureServices(WebApplicationBuilder builder)
 
 	services.AddControllers();
 
-
 	// temp:
-	services.AddKafkaServices(configuration);
-	services.AddMessageBrokerServices(configuration);
 
 	services.AddCommonServices();
 	services.AddHttpServices();

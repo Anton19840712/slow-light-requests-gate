@@ -5,5 +5,5 @@
   "Port": "5000",
   "Validate": true,  
   "Database":"mongo",
-  "Bus":"rabbit"
+  "Bus":"kafka"
 }
