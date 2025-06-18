@@ -27,7 +27,7 @@ public static class GateConfiguration
 		var port = int.TryParse(config["Port"]?.ToString(), out var p) ? p : 5000;
 		var enableValidation = bool.TryParse(config["Validate"]?.ToString(), out var v) && v;
 		var database = config["Database"]?.ToString() ?? "mongo";
-
+		var bus = config["Bus"]?.ToString() ?? "rabbit";		
 
 		builder.Configuration["CompanyName"] = companyName;
 		builder.Configuration["Host"] = host;
@@ -47,6 +47,21 @@ public static class GateConfiguration
 		builder.Services.AddMongoDbRepositoriesServices(builder.Configuration);
 
 		builder.Configuration["Database"] = database;
+		// Настраиваем шины сообщений для возможности переключения
+		if (bus == "rabbit")
+		{
+			builder.Services.AddRabbitMqServices(builder.Configuration);
+		}
+		else if (bus == "kafka")
+		{
+			builder.Services.AddKafkaServices(builder.Configuration);
+		}
+
+		// Всегда настраиваем обе шины для возможности переключения
+		builder.Services.AddRabbitMqServices(builder.Configuration);
+		builder.Services.AddKafkaServices(builder.Configuration);
+
+		builder.Configuration["Bus"] = bus;
 
 		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:80";

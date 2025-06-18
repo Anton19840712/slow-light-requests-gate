@@ -47,6 +47,11 @@ static void ConfigureServices(WebApplicationBuilder builder)
 
 	services.AddControllers();
 
+
+	// temp:
+	services.AddKafkaServices(configuration);
+	services.AddMessageBrokerServices(configuration);
+
 	services.AddCommonServices();
 	services.AddHttpServices();
 	services.AddRabbitMqServices(configuration);
