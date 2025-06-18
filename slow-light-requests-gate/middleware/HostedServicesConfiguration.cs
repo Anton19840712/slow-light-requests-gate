@@ -17,6 +17,7 @@ namespace lazy_light_requests_gate.middleware
 
 			// Регистрируем динамические фоновые сервисы
 			services.AddHostedService<DynamicOutboxBackgroundService>();
+			services.AddHostedService<IncidentCleanupBackgroundService>();
 
 			// Регистрируем фоновые сервисы в зависимости от базы данных
 			if (database == "postgres")

@@ -36,7 +36,7 @@ namespace lazy_light_requests_gate.services
 					var factory = scope.ServiceProvider.GetRequiredService<IMessageProcessingServiceFactory>();
 					var currentDatabase = factory.GetCurrentDatabaseType();
 
-					int ttlSeconds = int.TryParse(_configuration["MessageTtlSeconds"], out var ttl) ? ttl : 10;
+					int ttlSeconds = int.TryParse(_configuration["OutboxMessageTtlSeconds"], out var ttl) ? ttl : 10;
 					var olderThan = TimeSpan.FromSeconds(ttlSeconds);
 					int deletedCount = 0;
 

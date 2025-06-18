@@ -19,7 +19,18 @@ var app = builder.Build();
 
 try
 {
-	await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(app.Configuration);
+	// Получаем тип базы данных из конфигурации
+	var database = builder.Configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
+
+	// Инициализация базы данных при запуске
+	if (database == "postgres")
+	{
+		await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(builder.Configuration);
+	}
+	else if (database == "mongo")
+	{
+		await MongoDbConfiguration.EnsureDatabaseInitializedAsync(builder.Configuration);
+	}
 
 	// Применяем настройки приложения
 	ConfigureApp(app, httpUrl, httpsUrl);
@@ -48,7 +59,6 @@ static void ConfigureServices(WebApplicationBuilder builder)
 	services.AddControllers();
 
 	// temp:
-	services.AddScoped<ICleanupService, CleanupService>();
 	services.AddCommonServices();
 	services.AddHttpServices();
 	services.AddRabbitMqServices(configuration);

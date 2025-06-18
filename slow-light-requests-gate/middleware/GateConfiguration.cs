@@ -29,8 +29,8 @@ public static class GateConfiguration
 		var database = config["Database"]?.ToString() ?? "mongo";
 		var bus = config["Bus"]?.ToString() ?? "rabbit";
 		var cleanupIntervalSeconds = int.TryParse(config["CleanupIntervalSeconds"]?.ToString(), out var c) ? c : 10;
-		var messageTtlSeconds = int.TryParse(config["MessageTtlSeconds"]?.ToString(), out var ttl) ? ttl : 10;
-
+		var outboxMessageTtlSeconds = int.TryParse(config["OutboxMessageTtlSeconds"]?.ToString(), out var ttl) ? ttl : 10;
+		var incidentEntitiesTtlMonths = int.TryParse(config["IncidentEntitiesTtlMonths"]?.ToString(), out var incident) ? incident : 10;
 
 		builder.Configuration["CompanyName"] = companyName;
 		builder.Configuration["Host"] = host;
@@ -39,7 +39,8 @@ public static class GateConfiguration
 		builder.Configuration["Database"] = database;
 		builder.Configuration["Bus"] = bus;
 		builder.Configuration["CleanupIntervalSeconds"] = cleanupIntervalSeconds.ToString();
-		builder.Configuration["MessageTtlSeconds"] = cleanupIntervalSeconds.ToString();
+		builder.Configuration["OutboxMessageTtlSeconds"] = outboxMessageTtlSeconds.ToString();
+		builder.Configuration["IncidentEntitiesTtlMonths"] = outboxMessageTtlSeconds.ToString();
 
 		// Настройка PostgreSQL из rest.json
 		var postgresSettings = config["PostgresDbSettings"];
