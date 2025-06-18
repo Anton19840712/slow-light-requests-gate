@@ -58,12 +58,21 @@ namespace lazy_light_requests_gate.buses
 		{
 			try
 			{
+				_logger.LogInformation("Attempting to publish message to Kafka topic {Topic}. Message: {Message}", topic, message);
+				_logger.LogInformation("Kafka settings - BootstrapServers: {BootstrapServers}, SecurityProtocol: {SecurityProtocol}",
+					_kafkaSettings.BootstrapServers, _kafkaSettings.SecurityProtocol);
+
 				var result = await _producer.ProduceAsync(topic, new Message<Null, string> { Value = message });
-				_logger.LogInformation("Message published to Kafka topic {Topic} at offset {Offset}", topic, result.Offset);
+				_logger.LogInformation("SUCCESS: Message published to Kafka topic {Topic} at offset {Offset}", topic, result.Offset);
 			}
 			catch (ProduceException<Null, string> ex)
 			{
-				_logger.LogError(ex, "Failed to publish message to Kafka topic {Topic}", topic);
+				_logger.LogError(ex, "FAILED: Failed to publish message to Kafka topic {Topic}. Error: {ErrorReason}", topic, ex.Error?.Reason);
+				throw;
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "UNEXPECTED ERROR: Failed to publish message to Kafka topic {Topic}", topic);
 				throw;
 			}
 		}
@@ -104,6 +113,7 @@ namespace lazy_light_requests_gate.buses
 		public void Dispose()
 		{
 			_producer?.Dispose();
+			GC.SuppressFinalize(this);
 		}
 	}
 }
