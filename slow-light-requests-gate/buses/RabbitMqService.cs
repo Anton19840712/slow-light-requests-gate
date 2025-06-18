@@ -79,6 +79,11 @@ namespace lazy_light_requests_gate.buses
 				if (_persistentConnection != null && _persistentConnection.IsOpen)
 					return _persistentConnection;
 
+				if (_factory == null)
+				{
+					throw new InvalidOperationException("RabbitMqService: Сервис не инициализирован. Вызовите StartAsync перед использованием.");
+				}
+
 				int attempt = 0;
 
 				while (attempt < MaxRetryAttempts)
@@ -110,6 +115,11 @@ namespace lazy_light_requests_gate.buses
 
 		public async Task PublishMessageAsync(string queueName, string routingKey, string message)
 		{
+			if (_factory == null)
+			{
+				throw new InvalidOperationException("RabbitMqService: Сервис не инициализирован. Вызовите StartAsync перед использованием.");
+			}
+
 			await Task.Run(() =>
 			{
 				using var channel = PersistentConnection.CreateModel();
@@ -136,10 +146,22 @@ namespace lazy_light_requests_gate.buses
 			});
 		}
 
-		public IConnection CreateConnection() => PersistentConnection;
+		public IConnection CreateConnection()
+		{
+			if (_factory == null)
+			{
+				throw new InvalidOperationException("RabbitMqService: Сервис не инициализирован. Вызовите StartAsync перед использованием.");
+			}
+			return PersistentConnection;
+		}
 
 		public async Task<string> WaitForResponseAsync(string queueName, int timeoutMilliseconds = 15000, CancellationToken cancellationToken = default)
 		{
+			if (_factory == null)
+			{
+				throw new InvalidOperationException("RabbitMqService: Сервис не инициализирован. Вызовите StartAsync перед использованием.");
+			}
+
 			using var channel = PersistentConnection.CreateModel();
 			channel.QueueDeclare(queue: queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
 
