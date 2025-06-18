@@ -4,15 +4,15 @@
   "Host": "127.0.0.1",
   "Port": "5000",
   "Validate": true,  
-  "Database": "mongo",
+  "Database": "postgres",
   "Bus": "rabbit",
   "CleanupIntervalSeconds": 5,
   "MessageTtlSeconds": 100,
   "PostgresDbSettings": {
-    "Host": "localhost",
+    "Host": "172.16.211.21",
     "Port": 5432,
-    "Username": "postgres",
-    "Password": "mysecret",
+    "Username": "gridjushko",
+    "Password": "VNS2ExXB",
     "Database": "GatewayDB"
   },
   "MongoDbSettings": {

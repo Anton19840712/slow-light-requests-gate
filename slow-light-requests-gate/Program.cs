@@ -1,5 +1,6 @@
 using System.Text;
 using lazy_light_requests_gate.middleware;
+using lazy_light_requests_gate.services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -47,7 +48,7 @@ static void ConfigureServices(WebApplicationBuilder builder)
 	services.AddControllers();
 
 	// temp:
-
+	services.AddScoped<ICleanupService, CleanupService>();
 	services.AddCommonServices();
 	services.AddHttpServices();
 	services.AddRabbitMqServices(configuration);

@@ -2,8 +2,8 @@
 
 namespace lazy_light_requests_gate.services
 {
-	public interface ICleanupService<TRepository> where TRepository : IBaseRepository<OutboxMessage>
+	public interface ICleanupService
 	{
-		Task StartCleanupAsync(TRepository repository, CancellationToken cancellationToken);
+		Task StartCleanupAsync(IServiceProvider provider, CancellationToken cancellationToken);
 	}
 }

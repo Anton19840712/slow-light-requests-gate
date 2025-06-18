@@ -1,7 +1,6 @@
 ﻿using lazy_light_requests_gate.processing;
 using lazy_light_requests_gate.repositories;
 using lazy_light_requests_gate.services;
-using Microsoft.Extensions.Configuration;
 
 namespace lazy_light_requests_gate.background
 {
@@ -10,10 +9,11 @@ namespace lazy_light_requests_gate.background
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IRabbitMqService _rabbitMqService;
 		private readonly ILogger<DynamicOutboxBackgroundService> _logger;
+
 		public DynamicOutboxBackgroundService(
-				IServiceScopeFactory serviceScopeFactory,
-				IRabbitMqService rabbitMqService,
-				ILogger<DynamicOutboxBackgroundService> logger)
+			IServiceScopeFactory serviceScopeFactory,
+			IRabbitMqService rabbitMqService,
+			ILogger<DynamicOutboxBackgroundService> logger)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_rabbitMqService = rabbitMqService;
@@ -22,8 +22,8 @@ namespace lazy_light_requests_gate.background
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
-			// Запускаем cleanup как параллельную задачу
-			var cleanupTask = StartCleanupTask(stoppingToken);
+			// Запускаем задачу очистки в фоновом режиме
+			_ = Task.Run(() => StartCleanupTaskAsync(stoppingToken), stoppingToken);
 
 			while (!stoppingToken.IsCancellationRequested)
 			{
@@ -37,54 +37,44 @@ namespace lazy_light_requests_gate.background
 
 					if (currentDatabase == "postgres")
 					{
-						var postgresRepo = scope.ServiceProvider.GetRequiredService<IPostgresRepository<OutboxMessage>>();
-						await ProcessOutboxMessages(postgresRepo, stoppingToken);
+						var repo = scope.ServiceProvider.GetRequiredService<IPostgresRepository<OutboxMessage>>();
+						await ProcessOutboxMessages(repo, stoppingToken);
 					}
 					else
 					{
-						var mongoRepo = scope.ServiceProvider.GetRequiredService<IMongoRepository<OutboxMessage>>();
-						await ProcessOutboxMessages(mongoRepo, stoppingToken);
+						var repo = scope.ServiceProvider.GetRequiredService<IMongoRepository<OutboxMessage>>();
+						await ProcessOutboxMessages(repo, stoppingToken);
 					}
+
+					// Интервал между итерациями обработки
+					await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 				}
 				catch (Exception ex)
 				{
-					_logger.LogError(ex, "Error in DynamicOutboxBackgroundService");
+					_logger.LogError(ex, "Ошибка в DynamicOutboxBackgroundService");
 				}
 			}
-
-			// Ждем завершения cleanup задачи
-			await cleanupTask;
 		}
 
-		private async Task StartCleanupTask(CancellationToken stoppingToken)
+		private async Task StartCleanupTaskAsync(CancellationToken stoppingToken)
 		{
 			while (!stoppingToken.IsCancellationRequested)
 			{
+				using var scope = _serviceScopeFactory.CreateScope();
+
 				try
 				{
-					using var scope = _serviceScopeFactory.CreateScope();
-					var factory = scope.ServiceProvider.GetRequiredService<IMessageProcessingServiceFactory>();
-					var currentDatabase = factory.GetCurrentDatabaseType();
+					var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService>();
 
-					if (currentDatabase == "postgres")
-					{
-						var postgresRepo = scope.ServiceProvider.GetRequiredService<IPostgresRepository<OutboxMessage>>();
-						var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<IPostgresRepository<OutboxMessage>>>();
-						await cleanupService.StartCleanupAsync(postgresRepo, stoppingToken);
-					}
-					else
-					{
-						var mongoRepo = scope.ServiceProvider.GetRequiredService<IMongoRepository<OutboxMessage>>();
-						var cleanupService = scope.ServiceProvider.GetRequiredService<ICleanupService<IMongoRepository<OutboxMessage>>>();
-						await cleanupService.StartCleanupAsync(mongoRepo, stoppingToken);
-					}
+					await cleanupService.StartCleanupAsync(scope.ServiceProvider, stoppingToken);
 				}
 				catch (Exception ex)
 				{
-					_logger.LogError(ex, "Error in cleanup task");
-					// Небольшая пауза перед повторной попыткой
-					await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+					_logger.LogError(ex, "Ошибка в задаче очистки Outbox");
 				}
+
+				// Пауза на случай быстрого выхода из StartCleanupAsync
+				await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
 			}
 		}
 
@@ -112,8 +102,7 @@ namespace lazy_light_requests_gate.background
 
 						await repository.UpdateMessageAsync(message);
 
-						_logger.LogInformation("Message {MessageId} published to queue {Queue}",
-							message.Id, message.InQueue);
+						_logger.LogInformation("Message {MessageId} published to queue {Queue}", message.Id, message.InQueue);
 					}
 					catch (Exception ex)
 					{

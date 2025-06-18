@@ -136,12 +136,12 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 			connection.ExecuteAsync(sql, new { messageId, now = DateTime.UtcNow }));
 	}
 
-	public async Task<int> DeleteOldMessagesAsync(TimeSpan olderThan)
+	public async Task<int> DeleteOldMessagesAsync(TimeSpan olderThanFromNow)
 	{
 		using var connection = CreateConnection();
 
 		// cutoffTime — время, до которого считаем записи устаревшими
-		var cutoffTime = DateTime.UtcNow - olderThan;
+		var cutoffTime = DateTime.UtcNow - olderThanFromNow;
 		Log.Information("cutoffTime (UTC): {CutoffTime}", cutoffTime);
 
 		// Подсчёт кандидатов на удаление

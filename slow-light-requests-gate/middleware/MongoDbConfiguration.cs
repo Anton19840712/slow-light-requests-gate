@@ -61,7 +61,7 @@ namespace lazy_light_requests_gate.middleware
 				return client.GetDatabase(databaseName);
 			});
 			services.AddScoped(typeof(IMongoRepository<>), typeof(MongoRepository<>));
-			services.AddScoped(typeof(ICleanupService<IMongoRepository<OutboxMessage>>), typeof(CleanupService<IMongoRepository<OutboxMessage>>));
+			//services.AddScoped(typeof(ICleanupService<IMongoRepository<OutboxMessage>>), typeof(CleanupService<IMongoRepository<OutboxMessage>>));
 			return services;
 		}
 	}

@@ -23,7 +23,7 @@ public static class PostgresDbConfiguration
 		});
 
 		services.AddScoped(typeof(IPostgresRepository<>), typeof(PostgresRepository<>));
-		services.AddScoped(typeof(ICleanupService<IPostgresRepository<OutboxMessage>>), typeof(CleanupService<IPostgresRepository<OutboxMessage>>));
+		//services.AddScoped(typeof(ICleanupService<IPostgresRepository<OutboxMessage>>), typeof(CleanupService<IPostgresRepository<OutboxMessage>>));
 
 		return services;
 	}
