@@ -21,11 +21,19 @@ namespace lazy_light_requests_gate.middleware
 			var connectionString = mongoSettings.GetValue<string>("ConnectionString");
 			var databaseName = mongoSettings.GetValue<string>("DatabaseName");
 
-			var mongoUrl = new MongoUrlBuilder(connectionString)
+			var mongoUrlBuilder = new MongoUrlBuilder(connectionString);
+
+			// Устанавливаем учетные данные только если они не пустые
+			if (!string.IsNullOrWhiteSpace(user))
 			{
-				Username = user,
-				Password = password
-			}.ToString();
+				mongoUrlBuilder.Username = user;
+			}
+			if (!string.IsNullOrWhiteSpace(password))
+			{
+				mongoUrlBuilder.Password = password;
+			}
+
+			var mongoUrl = mongoUrlBuilder.ToString();
 
 			// 🔐 Настраиваем сериализацию Guid-ов
 			BsonDefaults.GuidRepresentationMode = GuidRepresentationMode.V3; // современный режим (рекомендуется)
