@@ -38,8 +38,7 @@ namespace lazy_light_requests_gate.middleware
 
 			// Регистрируем сервисы
 			services.AddSingleton<IRabbitMqService, RabbitMqService>();
-			services.AddSingleton<IRabbitMqQueueListener<RabbitMqQueueListener>, RabbitMqQueueListener>();
-			services.AddSingleton<RabbitMqService>(); // Добавляем регистрацию как конкретный тип
+			//services.AddSingleton<IRabbitMqQueueListener<RabbitMqQueueListener>, RabbitMqQueueListener>();
 
 			return services;
 		}

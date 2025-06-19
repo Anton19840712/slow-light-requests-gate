@@ -8,7 +8,7 @@ namespace lazy_light_requests_gate.temp
 		IEnumerable<BusInformationDto> GetRunningBusInfo();
 		Task StartBusAsync(MessageBusBaseSettings config, CancellationToken cancellationToken);
 		Task StartFromConfigFileAsync(CancellationToken cancellationToken);
-		Task StartFromJsonAsync(JsonDocument json, CancellationToken cancellationToken);
+		Task StartViaRestRequetAsync(JsonDocument json, CancellationToken cancellationToken);
 		Task StopAllBusesAsync(CancellationToken cancellationToken);
 		Task StopBusAsync(string id, CancellationToken cancellationToken);
 	}

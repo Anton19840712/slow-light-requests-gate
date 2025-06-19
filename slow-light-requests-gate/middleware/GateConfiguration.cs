@@ -32,6 +32,26 @@ public static class GateConfiguration
 		var outboxMessageTtlSeconds = int.TryParse(config["OutboxMessageTtlSeconds"]?.ToString(), out var ttl) ? ttl : 10;
 		var incidentEntitiesTtlMonths = int.TryParse(config["IncidentEntitiesTtlMonths"]?.ToString(), out var incident) ? incident : 10;
 
+		var busSettings = bus switch
+		{
+			"rabbit" => config["RabbitMqSettings"],
+			"kafka" => config["KafkaSettings"],
+			_ => throw new InvalidOperationException($"Bus '{bus}' не поддерживается.")
+		};
+
+
+		if (busSettings is JObject settingsObject)
+		{
+			foreach (var prop in settingsObject.Properties())
+			{
+				var key = $"BusSettings:{prop.Name}";
+				var value = prop.Value?.ToString();
+				if (!string.IsNullOrEmpty(value))
+					builder.Configuration[key] = value;
+			}
+		}
+
+
 		builder.Configuration["CompanyName"] = companyName;
 		builder.Configuration["Host"] = host;
 		builder.Configuration["Port"] = port.ToString();

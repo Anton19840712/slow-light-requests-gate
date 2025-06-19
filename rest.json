@@ -4,10 +4,10 @@
   "Host": "127.0.0.1",
   "Port": "5000",
   "Validate": true,  
-  "Database": "postgres",
+  "Database": "mongo",
   "Bus": "rabbit",
   "CleanupIntervalSeconds": 5,
-  "OutboxMessageTtlSeconds": 100,
+  "OutboxMessageTtlSeconds": 10,
   "IncidentEntitiesTtlMonths": 60,
   "PostgresDbSettings": {
     "Host": "172.16.211.21",
@@ -28,11 +28,14 @@
     }
   },
   "RabbitMqSettings": {
-    "HostName": "172.16.211.18",
-    "Port": 5672,
-    "UserName": "admin",
-    "Password": "admin",
-    "VirtualHost": "termidesk"
+    "hostName": "172.16.211.18",
+    "port": 5672,
+    "userName": "admin",
+    "password": "admin",
+    "virtualHost": "termidesk",
+    "pushQueueName": "tomsk_in",
+    "listenQueueName": "tomsk_out",
+    "heartbeat": "60"
   },
   "KafkaSettings": {
     "BootstrapServers": "localhost:9092",

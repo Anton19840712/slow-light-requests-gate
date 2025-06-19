@@ -19,7 +19,7 @@ namespace lazy_light_requests_gate.temp
 		{
 			try
 			{
-				await _busManager.StartFromJsonAsync(configJson, HttpContext.RequestAborted);
+				await _busManager.StartViaRestRequetAsync(configJson, HttpContext.RequestAborted);
 				return Ok("Шина запущена");
 			}
 			catch (Exception ex)

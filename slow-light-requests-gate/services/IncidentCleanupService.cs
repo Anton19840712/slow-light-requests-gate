@@ -66,6 +66,7 @@ namespace lazy_light_requests_gate.services
 						}
 						else
 						{
+							// время жизни такое-то, осталось столько-то, удаление будет произведено через столько. Можешь даже таблицей как-то вывести в консоль.
 							_logger.LogDebug("Записей IncidentEntity для удаления не найдено. TTL: {TtlMonths} месяцев.", _ttlMonths);
 						}
 					}

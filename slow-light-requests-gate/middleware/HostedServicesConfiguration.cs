@@ -12,22 +12,22 @@ namespace lazy_light_requests_gate.middleware
 			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
 
 			// Регистрируем обычные сервисы для возможности их получения через DI
-			services.AddTransient<QueueListenerRabbitPostgresBackgroundService>();
-			services.AddTransient<QueueListenerBackgroundServiceMongo>();
+			//services.AddTransient<QueueListenerRabbitPostgresBackgroundService>();
+			//services.AddTransient<QueueListenerBackgroundServiceMongo>();
 
 			// Регистрируем динамические фоновые сервисы
 			services.AddHostedService<DynamicOutboxBackgroundService>();
 			services.AddHostedService<IncidentCleanupBackgroundService>();
 
 			// Регистрируем фоновые сервисы в зависимости от базы данных
-			if (database == "postgres")
-			{
-				services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
-			}
-			else // mongo по умолчанию
-			{
-				services.AddHostedService<QueueListenerBackgroundServiceMongo>();
-			}
+			//if (database == "postgres")
+			//{
+			//	services.AddHostedService<QueueListenerRabbitPostgresBackgroundService>();
+			//}
+			//else // mongo по умолчанию
+			//{
+			//	services.AddHostedService<QueueListenerBackgroundServiceMongo>();
+			//}
 
 			return services;
 		}

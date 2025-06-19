@@ -28,7 +28,7 @@ namespace lazy_light_requests_gate.temp
 		}
 
 		// Запуск из JSON (для API контроллера)
-		public async Task StartFromJsonAsync(JsonDocument json, CancellationToken cancellationToken)
+		public async Task StartViaRestRequetAsync(JsonDocument json, CancellationToken cancellationToken)
 		{
 
 			if (!json.RootElement.TryGetProperty("gateWayType", out var gatewayTypeProp))

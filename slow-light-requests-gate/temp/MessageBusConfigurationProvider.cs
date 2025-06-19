@@ -13,34 +13,53 @@ namespace lazy_light_requests_gate.temp
 			_configuration = configuration;
 			_logger = logger;
 		}
+
 		public MessageBusBaseSettings GetConfiguration(JsonDocument jsonDocFromRestRequest = null)
 		{
-			// если появятся сценарии для запуска определенного инстанса на старте запуска приложения
 			if (jsonDocFromRestRequest == null)
 			{
-				//берем из конфигурации:
-				var busType = _configuration["GateWayType"];
-				var busJson = _configuration["MessageBus"];
+				// Конфигурация берется из appsettings/config.json
+				var busType = _configuration["Bus"]?.ToLowerInvariant();
 
-				if (string.IsNullOrWhiteSpace(busJson))
+				if (string.IsNullOrWhiteSpace(busType))
+					throw new InvalidOperationException("Тип шины 'Bus' не указан в конфигурации.");
+
+				var busSection = _configuration.GetSection("BusSettings");
+
+				if (!busSection.Exists())
+					throw new InvalidOperationException("Секция 'BusSettings' не найдена в конфигурации.");
+
+				// Парсим в зависимости от типа шины
+				return busType switch
 				{
-					throw new InvalidOperationException("MessageBus configuration is missing");
-				}
-				using var jsonDocWithGateParamsFromConfiuration = JsonDocument.Parse(busJson);
+					"rabbit" or "rabbitmq" =>
+						Setup(busSection.Get<RabbitMqSettings>(), MessageBusType.RabbitMq),
 
-				return ParseConfiguration(jsonDocWithGateParamsFromConfiuration.RootElement, busType);
+					"kafka" or "kafka-streams" =>
+						Setup(busSection.Get<KafkaStreamsSettings>(), MessageBusType.KafkaStreams),
+
+					"activemq" =>
+						Setup(busSection.Get<ActiveMqSettings>(), MessageBusType.ActiveMq),
+
+					_ => throw new NotSupportedException($"Тип шины '{busType}' не поддерживается.")
+				};
+
+				MessageBusBaseSettings Setup(MessageBusBaseSettings settings, MessageBusType type)
+				{
+					settings.TypeToRun = type;
+					settings.InstanceNetworkGateId = Guid.NewGuid().ToString();
+					return settings;
+				}
 			}
 			else
 			{
-				// Получаем gateWayType из JSON, пришедшего от REST-запроса
+				// Конфигурация пришла по REST
 				var root = jsonDocFromRestRequest.RootElement;
 
 				if (!root.TryGetProperty("gateWayType", out var gatewayTypeElement))
-				{
 					throw new InvalidOperationException("Не удалось найти параметр 'gateWayType' в JSON.");
-				}
 
-				var busType = gatewayTypeElement.GetString();
+				var busType = gatewayTypeElement.GetString()?.ToLowerInvariant();
 
 				return ParseConfiguration(root, busType);
 			}
@@ -51,56 +70,57 @@ namespace lazy_light_requests_gate.temp
 			return typeOfBusToRun switch
 			{
 				"activemq" => ParseActiveMqConfig(root),
-				"rabbitmq" => ParseRabbitMqConfig(root),
-				"kafka-streams" => ParseKafkaConfig(root),
+				"rabbitmq" or "rabbit" => ParseRabbitMqConfig(root),
+				"kafka-streams" or "kafka" => ParseKafkaConfig(root),
 				_ => throw new NotSupportedException($"Unknown bus type: {typeOfBusToRun}")
 			};
 		}
 
 		private ActiveMqSettings ParseActiveMqConfig(JsonElement root)
 		{
-			var activeMqSection = root.GetProperty("activeMq");
+			var section = root.GetProperty("activeMq");
 
 			return new ActiveMqSettings
 			{
 				InstanceNetworkGateId = Guid.NewGuid().ToString(),
 				TypeToRun = MessageBusType.ActiveMq,
-				BrokerUri = activeMqSection.GetProperty("brokerUri").GetString(),
-				QueueName = activeMqSection.GetProperty("queueName").GetString()
+				BrokerUri = section.GetProperty("brokerUri").GetString(),
+				QueueName = section.GetProperty("queueName").GetString()
 			};
 		}
+
 		private RabbitMqSettings ParseRabbitMqConfig(JsonElement root)
 		{
-			var rabbitMqSection = root.GetProperty("rabbitMq");
+			var section = root.GetProperty("rabbitMq");
 
-			// тебе можно просто использовать туже модель RabbitConfiguration
-			var rabbitMqSettings = new RabbitMqSettings();
+			var settings = new RabbitMqSettings();
 
-			rabbitMqSettings.InstanceNetworkGateId = Guid.NewGuid().ToString();
-			rabbitMqSettings.TypeToRun = MessageBusType.RabbitMq;
-			rabbitMqSettings.HostName = rabbitMqSection.GetProperty("hostName").GetString();
-			rabbitMqSettings.Port = rabbitMqSection.GetProperty("port").GetInt32();
-			rabbitMqSettings.UserName = rabbitMqSection.GetProperty("userName").GetString();
-			rabbitMqSettings.Password = rabbitMqSection.GetProperty("password").GetString();
-			rabbitMqSettings.QueueName = rabbitMqSection.GetProperty("queueName").GetString();
-			rabbitMqSettings.VirtualHost = rabbitMqSection.TryGetProperty("virtualHost", out var vhost) ? vhost.GetString() ?? "" : "";
-			rabbitMqSettings.Heartbeat = rabbitMqSection.TryGetProperty("heartbeat", out var hb) ? hb.GetString() ?? "" : "";
+			settings.InstanceNetworkGateId = Guid.NewGuid().ToString();
+			settings.TypeToRun = MessageBusType.RabbitMq;
+			settings.HostName = section.GetProperty("hostName").GetString();
+			settings.Port = section.GetProperty("port").GetInt32();
+			settings.UserName = section.GetProperty("userName").GetString();
+			settings.Password = section.GetProperty("password").GetString();
+			settings.PushQueueName = section.TryGetProperty("pushQueueName", out var pushQueue) ? pushQueue.GetString() ?? "" : "";
+			settings.ListenQueueName = section.TryGetProperty("listenQueueName", out var listenQueue) ? listenQueue.GetString() ?? "" : "";
+			settings.VirtualHost = section.TryGetProperty("virtualHost", out var vhost) ? vhost.GetString() ?? "" : "";
+			settings.Heartbeat = section.TryGetProperty("heartbeat", out var hb) ? hb.GetString() ?? "" : "";
 
-			return rabbitMqSettings;
+			return settings;
 		}
 
 		private KafkaStreamsSettings ParseKafkaConfig(JsonElement root)
 		{
-			var kafkaSection = root.GetProperty("kafka-streams");
+			var section = root.GetProperty("kafka-streams");
 
 			return new KafkaStreamsSettings
 			{
 				InstanceNetworkGateId = Guid.NewGuid().ToString(),
 				TypeToRun = MessageBusType.KafkaStreams,
-				BootstrapServers = kafkaSection.GetProperty("bootstrapServers").GetString(),
-				ApplicationId = kafkaSection.GetProperty("applicationId").GetString(),
-				InputTopic = kafkaSection.GetProperty("inputTopic").GetString(),
-				OutputTopic = kafkaSection.GetProperty("outputTopic").GetString()
+				BootstrapServers = section.GetProperty("bootstrapServers").GetString(),
+				ApplicationId = section.GetProperty("applicationId").GetString(),
+				InputTopic = section.GetProperty("inputTopic").GetString(),
+				OutputTopic = section.GetProperty("outputTopic").GetString()
 			};
 		}
 	}

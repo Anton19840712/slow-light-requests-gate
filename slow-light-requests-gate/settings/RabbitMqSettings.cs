@@ -10,7 +10,8 @@ namespace lazy_light_requests_gate.settings
 		public string Password { get; set; }
 		public string VirtualHost { get; set; }
 		public string Heartbeat { get; set; }
-		public string QueueName { get; set; }
+		public string PushQueueName { get; set; }
+		public string ListenQueueName { get; set; }
 		public Uri GetAmqpUri()
 		{
 			// VirtualHost может быть null или пустым, тогда используем /
