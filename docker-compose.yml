@@ -2,67 +2,31 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  slow-light-gate:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:80"
+      - "5001:443"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:80
-      - Database=postgres
-      - CompanyName=default-company
-      - Host=0.0.0.0
-      - Port=80
+      - ASPNETCORE_URLS=http://+:80;https://+:443
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=password
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+    volumes:
+      - ~/.aspnet/https:/https:ro
+      - ./gate-config.json:/app/gate-config.json:ro
     depends_on:
       - postgres
       - rabbitmq
     networks:
-      - app-network
-    deploy:
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: requestsgate
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - app-network
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-
-volumes:
-  postgres_data:
-  rabbitmq_data:
+      - slow-light-network
 
 networks:
-  app-network:
-    driver: overlay
+  slow-light-network:
+    driver: bridge
+
+configs:
+  gate_config:
+    external: true

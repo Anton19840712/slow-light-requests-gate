@@ -1,0 +1,8 @@
+﻿namespace lazy_light_requests_gate.presentation.enums
+{
+	public enum EventTypes
+	{
+		Received,
+		Processed
+	}
+}

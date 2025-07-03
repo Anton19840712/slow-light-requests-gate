@@ -1,0 +1,81 @@
+{
+  "Type": "rest",
+  "CompanyName": "Tomsk",
+  "Host": "127.0.0.1",
+  "PortHttp": 80,
+  "PortHttps": 443,
+  "Validate": true,
+  "Database": "mongo",
+  "Bus": "rabbit",
+  "CleanupIntervalSeconds": 5,
+  "OutboxMessageTtlSeconds": 10,
+  "IncidentEntitiesTtlMonths": 60,
+  "PostgresDbSettings": {
+    "Host": "localhost",
+    "Port": 5432,
+    "Username": "postgres",
+    "Password": "mysecret",
+    "Database": "GatewayDB"
+  },
+  "MongoDbSettings": {
+    "ConnectionString": "mongodb://root:root@172.16.211.20:27017/?authSource=admin",
+    "DatabaseName": "GatewayDB",
+    "User": "root",
+    "Password": "root",
+    "Collections": {
+      "QueueCollection": "QueueEntities",
+      "OutboxCollection": "OutboxMessages",
+      "IncidentCollection": "IncidentEntities"
+    }
+  },
+  "RabbitMqSettings": {
+    "InstanceNetworkGateId": "gate-tomsk-001",
+    "TypeToRun": "RabbitMQ",
+    "HostName": "172.16.211.18",
+    "Port": 5672,
+    "UserName": "admin",
+    "Password": "admin",
+    "VirtualHost": "termidesk",
+    "PushQueueName": "tomsk_in",
+    "ListenQueueName": "tomsk_out",
+    "Heartbeat": "60"
+  },
+  "ActiveMqSettings": {
+    "InstanceNetworkGateId": "gate-tomsk-001",
+    "TypeToRun": "ActiveMQ",
+    "BrokerUri": "tcp://localhost:61616",
+    "PushQueueName": "tomsk_in",
+    "ListenQueueName": "tomsk_out"
+  },
+  "PulsarSettings": {
+    "ServiceUrl": "pulsar://localhost:6650",
+    "Tenant": "public",
+    "Namespace": "default",
+    "InputTopic": "tomsk_in",
+    "OutputTopic": "tomsk_out",
+    "SubscriptionName": "tomsk-subscription"
+  },
+  "TarantoolSettings": {
+    "Host": "localhost",
+    "Port": "3301",
+    "Username": "admin",
+    "Password": "admin",
+    "InputSpace": "tomsk_in",
+    "OutputSpace": "tomsk_out",
+    "StreamName": "default-stream"
+  },
+  "KafkaStreamsSettings": {
+    "InstanceNetworkGateId": "gate-tomsk-001",
+    "TypeToRun": "KafkaStreams",
+    "BootstrapServers": "localhost:9092",
+    "ApplicationId": "tomsk-gateway-app",
+    "ClientId": "tomsk-gateway-client",
+    "InputTopic": "tomsk_in",
+    "OutputTopic": "tomsk_out",
+    "GroupId": "tomsk-gateway-group",
+    "AutoOffsetReset": "earliest",
+    "EnableAutoCommit": true,
+    "SessionTimeoutMs": 30000,
+    "SecurityProtocol": "PLAINTEXT"
+  }
+}
