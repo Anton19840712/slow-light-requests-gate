@@ -12,7 +12,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 		private IConnection _persistentConnection;
 		private bool _disposed = false;
 
-		public RabbitMqBusService(ILogger<RabbitMqBusService> logger, IConnectionFactory factory)
+		public RabbitMqBusService(IConnectionFactory factory, ILogger<RabbitMqBusService> logger=null)
 		{
 			_logger = logger;
 			_factory = factory;

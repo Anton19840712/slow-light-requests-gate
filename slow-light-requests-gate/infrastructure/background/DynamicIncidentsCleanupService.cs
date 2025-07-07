@@ -144,8 +144,7 @@ namespace lazy_light_requests_gate.infrastructure.background
 				// используйте ttlMonths!
 				var cutoffDate = DateTime.UtcNow.AddMonths(-ttlMonths);
 
-				_logger.LogInformation("Starting MongoDB incident cleanup. TTL: {TTL} months, Cutoff date: {CutoffDate}",
-					ttlMonths, cutoffDate);
+				// _logger.LogInformation("Starting MongoDB incident cleanup. TTL: {TTL} months, Cutoff date: {CutoffDate}", ttlMonths, cutoffDate);
 
 				var mongoRepo = scope.ServiceProvider.GetRequiredService<IMongoRepository<IncidentEntity>>();
 				var deletedCount = await mongoRepo.DeleteOldRecordsAsync(cutoffDate);

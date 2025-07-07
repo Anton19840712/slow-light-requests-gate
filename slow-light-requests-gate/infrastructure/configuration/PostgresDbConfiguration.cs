@@ -1,7 +1,7 @@
 ﻿using Dapper;
-using lazy_light_requests_gate.core.application.interfaces.common;
+using lazy_light_requests_gate.core.application.interfaces.databases;
 using lazy_light_requests_gate.core.application.interfaces.repos;
-using lazy_light_requests_gate.core.application.services.common;
+using lazy_light_requests_gate.core.application.services.databases;
 using lazy_light_requests_gate.infrastructure.data.repos;
 using lazy_light_requests_gate.presentation.models.settings.databases;
 using Npgsql;
@@ -34,72 +34,30 @@ public static class PostgresDbConfiguration
 		// Регистрируем настройки
 		services.Configure<PostgresDbSettings>(postgresSection);
 
-		// Получаем значения для отладки - используем более надежный способ
+		// ГЛАВНОЕ ИЗМЕНЕНИЕ: Регистрируем только динамический клиент
+		services.AddSingleton<IDynamicPostgresClient, DynamicPostgresClient>();
+
+		// Получаем значения для отладки
 		var settings = postgresSection.Get<PostgresDbSettings>();
 
-		// Дополнительная отладка
-		Console.WriteLine($"[{timestamp}] [DEBUG] PostgreSQL конфигурация (через .Get<>()):");
+		Console.WriteLine($"[{timestamp}] [DEBUG] PostgreSQL конфигурация:");
 		Console.WriteLine($"[{timestamp}] [DEBUG] - Host: '{settings?.Host ?? "NULL"}'");
 		Console.WriteLine($"[{timestamp}] [DEBUG] - Port: '{settings?.Port.ToString() ?? "NULL"}'");
 		Console.WriteLine($"[{timestamp}] [DEBUG] - Username: '{settings?.Username ?? "NULL"}'");
 		Console.WriteLine($"[{timestamp}] [DEBUG] - Password: '{(string.IsNullOrEmpty(settings?.Password) ? "NULL/EMPTY" : $"SET (length: {settings.Password.Length})")}'");
 		Console.WriteLine($"[{timestamp}] [DEBUG] - Database: '{settings?.Database ?? "NULL"}'");
 
-		// Также проверим через GetValue для сравнения
-		var host = postgresSection.GetValue<string>("Host");
-		var port = postgresSection.GetValue<string>("Port");
-		var username = postgresSection.GetValue<string>("Username");
-		var password = postgresSection.GetValue<string>("Password");
-		var database = postgresSection.GetValue<string>("Database");
-
-		Console.WriteLine($"[{timestamp}] [DEBUG] PostgreSQL конфигурация (через GetValue):");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Host: '{host ?? "NULL"}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Port: '{port ?? "NULL"}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Username: '{username ?? "NULL"}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Password: '{(string.IsNullOrEmpty(password) ? "NULL/EMPTY" : $"SET (length: {password.Length})")}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Database: '{database ?? "NULL"}'");
-
 		// Проверяем обязательные поля
-		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(username) ||
-			string.IsNullOrEmpty(password) || string.IsNullOrEmpty(database))
+		if (string.IsNullOrEmpty(settings?.Host) || string.IsNullOrEmpty(settings?.Username) ||
+			string.IsNullOrEmpty(settings?.Password) || string.IsNullOrEmpty(settings?.Database))
 		{
 			throw new InvalidOperationException("Все поля PostgreSQL конфигурации обязательны для заполнения");
 		}
 
-		// Формируем строку подключения более безопасным способом
-		var connectionStringBuilder = new NpgsqlConnectionStringBuilder
-		{
-			Host = host,
-			Port = int.TryParse(port, out var parsedPort) ? parsedPort : 5432,
-			Username = username,
-			Password = password,
-			Database = database
-		};
-
-		var connectionString = connectionStringBuilder.ToString();
-		Console.WriteLine($"[{timestamp}] [DEBUG] - ConnectionString сформирован (длина: {connectionString.Length})");
-
-		// Отладочная информация о строке подключения (без пароля)
-		var debugConnectionString = connectionString.Replace(password, "***");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - ConnectionString: {debugConnectionString}");
-
-		// Регистрируем фабрику подключений
-		services.AddSingleton<IPostgresConnectionFactory>(provider =>
-			new PostgresConnectionFactory(connectionString));
-
-		// Регистрируем IDbConnection для Dapper (Scoped - новое подключение для каждого запроса)
-		services.AddScoped(sp =>
-		{
-			var factory = sp.GetRequiredService<IPostgresConnectionFactory>();
-			var connection = factory.CreateConnection();
-			connection.Open();
-			return connection;
-		});
-
-		// Регистрируем репозитории PostgreSQL
+		// Регистрируем репозитории PostgreSQL с динамическим клиентом
 		services.AddScoped(typeof(IPostgresRepository<>), typeof(PostgresRepository<>));
 
-		Console.WriteLine($"[{timestamp}] [SUCCESS] PostgreSQL сервисы успешно зарегистрированы");
+		Console.WriteLine($"[{timestamp}] [SUCCESS] PostgreSQL динамические сервисы успешно зарегистрированы");
 		return services;
 	}
 

@@ -10,7 +10,6 @@ namespace lazy_light_requests_gate.presentation.models.settings.databases
 		[Required]
 		public string DatabaseName { get; set; } = "";
 
-		// Добавляем поля User и Password
 		public string User { get; set; } = "";
 
 		public string Password { get; set; } = "";

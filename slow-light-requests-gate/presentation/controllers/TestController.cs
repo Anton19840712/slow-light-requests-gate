@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace lazy_light_requests_gate.presentation.сontrollers;
+namespace lazy_light_requests_gate.presentation.controllers;
 
 [ApiController]
 [Route("api/[controller]")]

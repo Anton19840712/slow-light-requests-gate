@@ -264,7 +264,7 @@ public class DynamicOutboxCleanupService : BackgroundService
 
 			var ttlSeconds = configuration.GetValue("OutboxMessageTtlSeconds", 10);
 			var cutoffDate = DateTime.UtcNow.AddSeconds(-ttlSeconds);
-
+			// _logger.LogInformation("Starting MongoDB outbox cleanup. TTL: {TTL} seconds, Cutoff date: {CutoffDate}", ttlSeconds, cutoffDate);
 			var deletedCount = await repository.DeleteOldRecordsAsync(cutoffDate, requireProcessed: true);
 
 			if (deletedCount > 0)

@@ -10,6 +10,12 @@ namespace lazy_light_requests_gate.infrastructure.configuration;
 /// </summary>
 public static class GateConfiguration
 {
+	// Поддерживаемые шины сообщений
+	private static readonly string[] SupportedMessageBuses = { "rabbit", "activemq", "pulsar", "tarantool", "kafkastreams" };
+
+	// Поддерживаемые базы данных  
+	private static readonly string[] SupportedDatabases = { "postgres", "mongo" };
+
 	/// <summary>
 	/// Настройка динамических параметров шлюза и возврат HTTP/HTTPS адресов
 	/// </summary>
@@ -46,14 +52,7 @@ public static class GateConfiguration
 		ValidateGateConfigurationModel(gateConfig);
 
 		// Настройка шины сообщений
-		var busSettings = bus switch
-		{
-			"rabbit" => config["RabbitMqSettings"],
-			"activemq" => config["ActiveMqSettings"],
-			"kafka" => config["KafkaStreamsSettings"],
-			_ => throw new InvalidOperationException($"Bus '{bus}' не поддерживается. Поддерживаются: rabbit, activemq, kafka.")
-		};
-
+		var busSettings = GetBusSettings(bus, config);
 		if (busSettings is JObject settingsObject)
 		{
 			foreach (var prop in settingsObject.Properties())
@@ -98,6 +97,38 @@ public static class GateConfiguration
 		return await Task.FromResult((httpUrl, httpsUrl));
 	}
 
+	/// <summary>
+	/// Получить настройки шины сообщений по типу
+	/// </summary>
+	private static JToken GetBusSettings(string bus, JObject config)
+	{
+		return bus.ToLower() switch
+		{
+			"rabbit" => config["RabbitMqSettings"],
+			"activemq" => config["ActiveMqSettings"],
+			"pulsar" => config["PulsarSettings"],
+			"tarantool" => config["TarantoolSettings"],
+			"kafkastreams" => config["KafkaStreamsSettings"],
+			_ => throw new InvalidOperationException($"Bus '{bus}' не поддерживается. Поддерживаются: {string.Join(", ", SupportedMessageBuses)}")
+		};
+	}
+
+	/// <summary>
+	/// Получить ключ настроек для валидации
+	/// </summary>
+	private static string GetBusSettingsKey(string bus)
+	{
+		return bus.ToLower() switch
+		{
+			"rabbit" => "RabbitMqSettings",
+			"activemq" => "ActiveMqSettings",
+			"pulsar" => "PulsarSettings",
+			"tarantool" => "TarantoolSettings",
+			"kafkastreams" => "KafkaStreamsSettings",
+			_ => throw new InvalidOperationException($"Bus '{bus}' не поддерживается")
+		};
+	}
+
 	private static (string QueueIn, string QueueOut) GenerateQueueNames(string companyName)
 	{
 		var normalized = companyName.Trim().ToLowerInvariant();
@@ -119,15 +150,15 @@ public static class GateConfiguration
 	private static void ValidateConfiguration(string database, string bus, JObject config)
 	{
 		// Валидация базы данных
-		if (!new[] { "postgres", "mongo" }.Contains(database.ToLower()))
+		if (!SupportedDatabases.Contains(database.ToLower()))
 		{
-			throw new InvalidOperationException($"Неподдерживаемая база данных: {database}. Поддерживаются: postgres, mongo");
+			throw new InvalidOperationException($"Неподдерживаемая база данных: {database}. Поддерживаются: {string.Join(", ", SupportedDatabases)}");
 		}
 
 		// Валидация шины сообщений
-		if (!new[] { "rabbit", "activemq", "kafka" }.Contains(bus.ToLower()))
+		if (!SupportedMessageBuses.Contains(bus.ToLower()))
 		{
-			throw new InvalidOperationException($"Неподдерживаемая шина сообщений: {bus}. Поддерживаются: rabbit, activemq, kafka");
+			throw new InvalidOperationException($"Неподдерживаемая шина сообщений: {bus}. Поддерживаются: {string.Join(", ", SupportedMessageBuses)}");
 		}
 
 		// Проверка наличия настроек для выбранной БД (только для активной)
@@ -142,15 +173,8 @@ public static class GateConfiguration
 		}
 
 		// Проверка наличия настроек для выбранной шины
-		var busSettingsKey = bus switch
-		{
-			"rabbit" => "RabbitMqSettings",
-			"activemq" => "ActiveMqSettings",
-			"kafka" => "KafkaStreamsSettings",
-			_ => null
-		};
-
-		if (busSettingsKey != null && config[busSettingsKey] == null)
+		var busSettingsKey = GetBusSettingsKey(bus);
+		if (config[busSettingsKey] == null)
 		{
 			throw new InvalidOperationException($"{busSettingsKey} обязательны когда Bus = '{bus}'");
 		}
@@ -286,7 +310,6 @@ public static class GateConfiguration
 			var collections = mongoSettings["Collections"];
 			if (collections != null)
 			{
-				builder.Configuration["MongoDbSettings:Collections:QueueCollection"] = collections["QueueCollection"]?.ToString() ?? "QueueEntities";
 				builder.Configuration["MongoDbSettings:Collections:OutboxCollection"] = collections["OutboxCollection"]?.ToString() ?? "OutboxMessages";
 				builder.Configuration["MongoDbSettings:Collections:IncidentCollection"] = collections["IncidentCollection"]?.ToString() ?? "IncidentEntities";
 			}
@@ -341,6 +364,7 @@ public static class GateConfiguration
 			return "";
 		}
 	}
+
 	private static Task ConfigureMessageBus(JObject config, WebApplicationBuilder builder, string bus)
 	{
 		var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
@@ -371,6 +395,7 @@ public static class GateConfiguration
 		{
 			Console.WriteLine($"[{timestamp}] [CONFIG] ActiveMqSettings отсутствуют в конфигурации");
 		}
+
 		// 3. Pulsar
 		if (config["PulsarSettings"] != null)
 		{
@@ -381,6 +406,7 @@ public static class GateConfiguration
 		{
 			Console.WriteLine($"[{timestamp}] [CONFIG] PulsarSettings отсутствуют в конфигурации");
 		}
+
 		// 4. Tarantool
 		if (config["TarantoolSettings"] != null)
 		{
@@ -391,11 +417,12 @@ public static class GateConfiguration
 		{
 			Console.WriteLine($"[{timestamp}] [CONFIG] TarantoolSettings отсутствуют в конфигурации");
 		}
-		// 4. Kafka
+
+		// 5. KafkaStreams
 		if (config["KafkaStreamsSettings"] != null)
 		{
 			ConfigureKafkaStreams(config, builder);
-			Console.WriteLine($"[{timestamp}] [CONFIG] Kafka настройки скопированы");
+			Console.WriteLine($"[{timestamp}] [CONFIG] KafkaStreams настройки скопированы");
 		}
 		else
 		{
@@ -411,11 +438,14 @@ public static class GateConfiguration
 			case "activemq":
 				Console.WriteLine($"[{timestamp}] [CONFIG] ActiveMQ установлен как ОСНОВНАЯ шина");
 				break;
+			case "pulsar":
+				Console.WriteLine($"[{timestamp}] [CONFIG] Pulsar установлен как ОСНОВНАЯ шина");
+				break;
 			case "tarantool":
 				Console.WriteLine($"[{timestamp}] [CONFIG] Tarantool установлен как ОСНОВНАЯ шина");
 				break;
 			case "kafkastreams":
-				Console.WriteLine($"[{timestamp}] [CONFIG] Kafka установлен как ОСНОВНАЯ шина");
+				Console.WriteLine($"[{timestamp}] [CONFIG] KafkaStreams установлен как ОСНОВНАЯ шина");
 				break;
 		}
 
@@ -456,7 +486,7 @@ public static class GateConfiguration
 	}
 
 	/// <summary>
-	/// Настройка Apache Pulsar - НОВЫЙ МЕТОД
+	/// Настройка Apache Pulsar
 	/// </summary>
 	private static void ConfigurePulsar(JObject config, WebApplicationBuilder builder)
 	{
@@ -472,11 +502,18 @@ public static class GateConfiguration
 			builder.Configuration["PulsarSettings:OutputTopic"] = pulsarSettings["OutputTopic"]?.ToString() ?? "";
 			builder.Configuration["PulsarSettings:SubscriptionName"] = pulsarSettings["SubscriptionName"]?.ToString() ?? "default-subscription";
 			builder.Configuration["PulsarSettings:SubscriptionType"] = pulsarSettings["SubscriptionType"]?.ToString() ?? "Exclusive";
+			builder.Configuration["PulsarSettings:ConnectionTimeoutSeconds"] = pulsarSettings["ConnectionTimeoutSeconds"]?.ToString() ?? "15";
+			builder.Configuration["PulsarSettings:MaxReconnectAttempts"] = pulsarSettings["MaxReconnectAttempts"]?.ToString() ?? "3";
+			builder.Configuration["PulsarSettings:ReconnectIntervalSeconds"] = pulsarSettings["ReconnectIntervalSeconds"]?.ToString() ?? "5";
+			builder.Configuration["PulsarSettings:EnableCompression"] = pulsarSettings["EnableCompression"]?.ToString() ?? "false";
+			builder.Configuration["PulsarSettings:CompressionType"] = pulsarSettings["CompressionType"]?.ToString() ?? "LZ4";
+			builder.Configuration["PulsarSettings:BatchSize"] = pulsarSettings["BatchSize"]?.ToString() ?? "1000";
+			builder.Configuration["PulsarSettings:BatchingMaxPublishDelayMs"] = pulsarSettings["BatchingMaxPublishDelayMs"]?.ToString() ?? "10";
 		}
 	}
 
 	/// <summary>
-	/// Настройка Tarantool - НОВЫЙ МЕТОД
+	/// Настройка Tarantool
 	/// </summary>
 	private static void ConfigureTarantool(JObject config, WebApplicationBuilder builder)
 	{
@@ -496,7 +533,7 @@ public static class GateConfiguration
 	}
 
 	/// <summary>
-	/// Настройка Kafka Streams - НОВЫЙ МЕТОД
+	/// Настройка Kafka Streams
 	/// </summary>
 	private static void ConfigureKafkaStreams(JObject config, WebApplicationBuilder builder)
 	{
@@ -538,8 +575,8 @@ public static class GateConfiguration
 
 		Console.ForegroundColor = ConsoleColor.White;
 		Console.WriteLine($"Компания:              {companyName}");
-		Console.WriteLine($"Хост http:                  {host}:{portHttp}");
-		Console.WriteLine($"Хост https:                  {host}:{portHttps}");
+		Console.WriteLine($"Хост http:             {host}:{portHttp}");
+		Console.WriteLine($"Хост https:            {host}:{portHttps}");
 		Console.ResetColor();
 
 		Console.ForegroundColor = ConsoleColor.Yellow;
@@ -552,13 +589,13 @@ public static class GateConfiguration
 		Console.ResetColor();
 
 		Console.ForegroundColor = ConsoleColor.Magenta;
-		Console.WriteLine($"Интервал запуска проверки устаревших сообщений:      {cleanupIntervalSeconds} сек");
-		Console.WriteLine($"TTL outbox сообщений:         {outboxMessageTtlSeconds} сек");
+		Console.WriteLine($"Интервал очистки:      {cleanupIntervalSeconds} сек");
+		Console.WriteLine($"TTL outbox сообщений:  {outboxMessageTtlSeconds} сек");
 		Console.WriteLine($"TTL инцидентов:        {incidentEntitiesTtlMonths} мес");
 		Console.ResetColor();
 
 		// Подробности базы данных
-		if (database.ToLower() == "postgres")
+		if (database.Equals("postgres", StringComparison.CurrentCultureIgnoreCase))
 		{
 			var pgSettings = config["PostgresDbSettings"];
 			if (pgSettings != null)
@@ -569,7 +606,7 @@ public static class GateConfiguration
 				Console.ResetColor();
 			}
 		}
-		else if (database.ToLower() == "mongo")
+		else if (database.Equals("mongo", StringComparison.CurrentCultureIgnoreCase))
 		{
 			var mongoSettings = config["MongoDbSettings"];
 			if (mongoSettings != null)
@@ -586,74 +623,7 @@ public static class GateConfiguration
 		}
 
 		// Подробности шины сообщений
-		if (bus.ToLower() == "rabbit")
-		{
-			var rabbitSettings = config["RabbitMqSettings"];
-			if (rabbitSettings != null)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
-				Console.WriteLine($"RabbitMQ:              {rabbitSettings["HostName"]}:{rabbitSettings["Port"]}");
-				Console.WriteLine($"Push -> Listen:        {rabbitSettings["PushQueueName"]} -> {rabbitSettings["ListenQueueName"]}");
-				Console.WriteLine($"Virtual Host:          {rabbitSettings["VirtualHost"]}");
-				Console.WriteLine($"Gate ID:               {rabbitSettings["InstanceNetworkGateId"]}");
-				Console.ResetColor();
-			}
-		}
-		else if (bus.ToLower() == "activemq")
-		{
-			var activeMqSettings = config["ActiveMqSettings"];
-			if (activeMqSettings != null)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
-				Console.WriteLine($"ActiveMQ:              {activeMqSettings["BrokerUri"]}");
-				Console.WriteLine($"Очередь:               {activeMqSettings["QueueName"]}");
-				Console.WriteLine($"Gate ID:               {activeMqSettings["InstanceNetworkGateId"]}");
-				Console.ResetColor();
-			}
-		}
-		else if (bus.ToLower() == "pulsar")  // НОВОЕ ЛОГИРОВАНИЕ
-		{
-			var pulsarSettings = config["PulsarSettings"];
-			if (pulsarSettings != null)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
-				Console.WriteLine($"Pulsar:                {pulsarSettings["ServiceUrl"]}");
-				Console.WriteLine($"Tenant/Namespace:      {pulsarSettings["Tenant"]}/{pulsarSettings["Namespace"]}");
-				Console.WriteLine($"Input -> Output:       {pulsarSettings["InputTopic"]} -> {pulsarSettings["OutputTopic"]}");
-				Console.WriteLine($"Subscription:          {pulsarSettings["SubscriptionName"]}");
-				Console.WriteLine($"Gate ID:               {pulsarSettings["InstanceNetworkGateId"]}");
-				Console.ResetColor();
-			}
-		}
-
-		else if (bus.ToLower() == "tarantool")  // НОВОЕ ЛОГИРОВАНИЕ
-		{
-			var tarantoolSettings = config["TarantoolSettings"];
-			if (tarantoolSettings != null)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
-				Console.WriteLine($"Tarantool:             {tarantoolSettings["Host"]}:{tarantoolSettings["Port"]}");
-				Console.WriteLine($"Input -> Output:       {tarantoolSettings["InputSpace"]} -> {tarantoolSettings["OutputSpace"]}");
-				Console.WriteLine($"Stream:                {tarantoolSettings["StreamName"]}");
-				Console.WriteLine($"Gate ID:               {tarantoolSettings["InstanceNetworkGateId"]}");
-				Console.ResetColor();
-			}
-		}
-
-		else if (bus.ToLower() == "kafkastreams")  // НОВОЕ ЛОГИРОВАНИЕ
-		{
-			var kafkaStreamsSettings = config["KafkaStreamsSettings"];
-			if (kafkaStreamsSettings != null)
-			{
-				Console.ForegroundColor = ConsoleColor.DarkGreen;
-				Console.WriteLine($"Kafka Streams:         {kafkaStreamsSettings["BootstrapServers"]}");
-				Console.WriteLine($"Application ID:        {kafkaStreamsSettings["ApplicationId"]}");
-				Console.WriteLine($"Input -> Output:       {kafkaStreamsSettings["InputTopic"]} -> {kafkaStreamsSettings["OutputTopic"]}");
-				Console.WriteLine($"Group ID:              {kafkaStreamsSettings["GroupId"]}");
-				Console.WriteLine($"Gate ID:               {kafkaStreamsSettings["InstanceNetworkGateId"]}");
-				Console.ResetColor();
-			}
-		}
+		LogBusDetails(bus, config);
 
 		Console.ForegroundColor = ConsoleColor.Cyan;
 		Console.WriteLine("═══════════════════════════════════════════════════════════════");
@@ -674,6 +644,82 @@ public static class GateConfiguration
 		Console.WriteLine($"[{timestamp}] [INFO] - Cleanup Interval: {cleanupIntervalSeconds} seconds");
 		Console.WriteLine($"[{timestamp}] [INFO] - Outbox TTL: {outboxMessageTtlSeconds} seconds");
 		Console.WriteLine($"[{timestamp}] [INFO] - Incidents TTL: {incidentEntitiesTtlMonths} months\n");
+	}
+
+	/// <summary>
+	/// Логирование деталей настроек шины сообщений
+	/// </summary>
+	private static void LogBusDetails(string bus, JObject config)
+	{
+		Console.ForegroundColor = ConsoleColor.DarkYellow;
+
+		switch (bus.ToLower())
+		{
+			case "rabbit":
+				var rabbitSettings = config["RabbitMqSettings"];
+				if (rabbitSettings != null)
+				{
+					Console.WriteLine($"RabbitMQ:              {rabbitSettings["HostName"]}:{rabbitSettings["Port"]}");
+					Console.WriteLine($"Push -> Listen:        {rabbitSettings["PushQueueName"]} -> {rabbitSettings["ListenQueueName"]}");
+					Console.WriteLine($"Virtual Host:          {rabbitSettings["VirtualHost"]}");
+					Console.WriteLine($"Gate ID:               {rabbitSettings["InstanceNetworkGateId"]}");
+				}
+				break;
+
+			case "activemq":
+				var activeMqSettings = config["ActiveMqSettings"];
+				if (activeMqSettings != null)
+				{
+					Console.WriteLine($"ActiveMQ:              {activeMqSettings["BrokerUri"]}");
+					Console.WriteLine($"Push -> Listen:        {activeMqSettings["PushQueueName"]} -> {activeMqSettings["ListenQueueName"]}");
+					Console.WriteLine($"Gate ID:               {activeMqSettings["InstanceNetworkGateId"]}");
+				}
+				break;
+
+			case "pulsar":
+				var pulsarSettings = config["PulsarSettings"];
+				if (pulsarSettings != null)
+				{
+					Console.WriteLine($"Pulsar:                {pulsarSettings["ServiceUrl"]}");
+					Console.WriteLine($"Tenant/Namespace:      {pulsarSettings["Tenant"]}/{pulsarSettings["Namespace"]}");
+					Console.WriteLine($"Input -> Output:       {pulsarSettings["InputTopic"]} -> {pulsarSettings["OutputTopic"]}");
+					Console.WriteLine($"Subscription:          {pulsarSettings["SubscriptionName"]} ({pulsarSettings["SubscriptionType"]})");
+					Console.WriteLine($"Compression:           {pulsarSettings["EnableCompression"]} ({pulsarSettings["CompressionType"]})");
+					Console.WriteLine($"Gate ID:               {pulsarSettings["InstanceNetworkGateId"]}");
+				}
+				break;
+
+			case "tarantool":
+				var tarantoolSettings = config["TarantoolSettings"];
+				if (tarantoolSettings != null)
+				{
+					Console.WriteLine($"Tarantool:             {tarantoolSettings["Host"]}:{tarantoolSettings["Port"]}");
+					Console.WriteLine($"Input -> Output:       {tarantoolSettings["InputSpace"]} -> {tarantoolSettings["OutputSpace"]}");
+					Console.WriteLine($"Stream:                {tarantoolSettings["StreamName"]}");
+					Console.WriteLine($"Gate ID:               {tarantoolSettings["InstanceNetworkGateId"]}");
+				}
+				break;
+
+			case "kafkastreams":
+				var kafkaStreamsSettings = config["KafkaStreamsSettings"];
+				if (kafkaStreamsSettings != null)
+				{
+					Console.ForegroundColor = ConsoleColor.DarkGreen;
+					Console.WriteLine($"Kafka Streams:         {kafkaStreamsSettings["BootstrapServers"]}");
+					Console.WriteLine($"Application ID:        {kafkaStreamsSettings["ApplicationId"]}");
+					Console.WriteLine($"Input -> Output:       {kafkaStreamsSettings["InputTopic"]} -> {kafkaStreamsSettings["OutputTopic"]}");
+					Console.WriteLine($"Group ID:              {kafkaStreamsSettings["GroupId"]}");
+					Console.WriteLine($"Security:              {kafkaStreamsSettings["SecurityProtocol"]}");
+					Console.WriteLine($"Gate ID:               {kafkaStreamsSettings["InstanceNetworkGateId"]}");
+				}
+				break;
+
+			default:
+				Console.WriteLine($"Неизвестная шина:      {bus}");
+				break;
+		}
+
+		Console.ResetColor();
 	}
 
 	private static string ExtractHostFromConnectionString(string connectionString)

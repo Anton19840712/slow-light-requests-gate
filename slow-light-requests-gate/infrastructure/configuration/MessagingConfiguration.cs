@@ -28,7 +28,6 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 			services.AddTransient<MessageProcessingMongoService>();
 			services.AddTransient<IMessageProcessingService, MessageProcessingMongoService>();
 
-
 			return services;
 		}
 	}

@@ -1,11 +1,11 @@
-﻿using MongoDB.Driver;
-using MongoDB.Bson;
-using System.Security.Authentication;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Bson.Serialization;
 using lazy_light_requests_gate.presentation.models.settings.databases;
 using lazy_light_requests_gate.core.application.interfaces.repos;
 using lazy_light_requests_gate.infrastructure.data.repos;
+using lazy_light_requests_gate.core.application.interfaces.databases;
+using lazy_light_requests_gate.core.application.services.databases;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {
@@ -13,22 +13,14 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 	{
 		public static IServiceCollection AddMongoDbServices(this IServiceCollection services, IConfiguration configuration)
 		{
+			var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+			Console.WriteLine($"[{timestamp}] [CONFIG] Настройка MongoDB сервисов...");
+
 			var mongoSettings = configuration.GetSection("MongoDbSettings");
 			services.Configure<MongoDbSettings>(mongoSettings);
 
-			var user = mongoSettings.GetValue<string>("User");
-			var password = mongoSettings.GetValue<string>("Password");
-			var connectionString = mongoSettings.GetValue<string>("ConnectionString");
-			var databaseName = mongoSettings.GetValue<string>("DatabaseName");
-
-			var mongoUrl = new MongoUrlBuilder(connectionString)
-			{
-				Username = user,
-				Password = password
-			}.ToString();
-
-			// 🔐 Настраиваем сериализацию Guid-ов
-			BsonDefaults.GuidRepresentationMode = GuidRepresentationMode.V3; // современный режим (рекомендуется)
+			// Настраиваем сериализацию Guid-ов
+			BsonDefaults.GuidRepresentationMode = GuidRepresentationMode.V3;
 
 			try
 			{
@@ -37,21 +29,16 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 			catch (BsonSerializationException)
 			{
 				// Сериализатор уже зарегистрирован, игнорируем
+				Console.WriteLine($"[{timestamp}] [DEBUG] GUID сериализатор уже зарегистрирован");
 			}
 
-			var settings = MongoClientSettings.FromUrl(new MongoUrl(mongoUrl));
-			settings.SslSettings = new SslSettings { EnabledSslProtocols = SslProtocols.Tls12 };
+			// ГЛАВНОЕ ИЗМЕНЕНИЕ: Регистрируем только динамический клиент
+			services.AddSingleton<IDynamicMongoClient, DynamicMongoClient>();
 
-			// 👇 Регистрируем MongoClient
-			services.AddSingleton<IMongoClient>(new MongoClient(settings));
-
-			// 👇 Регистрируем базу
-			services.AddSingleton(sp =>
-			{
-				var client = sp.GetRequiredService<IMongoClient>();
-				return client.GetDatabase(databaseName);
-			});
+			// Регистрируем репозитории MongoDB с динамическим клиентом
 			services.AddScoped(typeof(IMongoRepository<>), typeof(MongoRepository<>));
+
+			Console.WriteLine($"[{timestamp}] [SUCCESS] MongoDB динамические сервисы успешно зарегистрированы");
 			return services;
 		}
 	}

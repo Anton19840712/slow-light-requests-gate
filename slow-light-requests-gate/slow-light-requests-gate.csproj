@@ -6,12 +6,6 @@
     <RootNamespace>lazy_light_requests_gate</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="services\**" />
-    <Content Remove="services\**" />
-    <EmbeddedResource Remove="services\**" />
-    <None Remove="services\**" />
-  </ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Confluent.Kafka" Version="2.6.1" />
 		<PackageReference Include="Streamiz.Kafka.Net" Version="1.7.0" />

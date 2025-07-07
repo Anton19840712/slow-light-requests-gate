@@ -1,10 +1,9 @@
 ﻿using System.Data;
 using System.Reflection;
 using Dapper;
+using lazy_light_requests_gate.core.application.interfaces.databases;
 using lazy_light_requests_gate.core.application.interfaces.repos;
 using lazy_light_requests_gate.core.domain.entities;
-using lazy_light_requests_gate.presentation.models.settings.databases;
-using Microsoft.Extensions.Options;
 using Npgsql;
 using Polly;
 using Polly.Retry;
@@ -14,15 +13,19 @@ namespace lazy_light_requests_gate.infrastructure.data.repos;
 
 public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 {
-	private readonly string _connectionString;
+	private readonly IDynamicPostgresClient _dynamicClient;
 	private readonly string _tableName;
 	private readonly AsyncRetryPolicy _retryPolicy;
 	private readonly ILogger<PostgresRepository<T>> _logger;
-	public PostgresRepository(IOptions<PostgresDbSettings> settings, ILogger<PostgresRepository<T>> logger)
+
+	public PostgresRepository(
+		IDynamicPostgresClient dynamicClient,
+		ILogger<PostgresRepository<T>> logger)
 	{
-		_logger= logger;
-		_connectionString = settings.Value.GetConnectionString();
+		_dynamicClient = dynamicClient;
+		_logger = logger;
 		_tableName = GetTableName(typeof(T));
+
 		_retryPolicy = Policy
 			.Handle<NpgsqlException>()
 			.WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
@@ -33,8 +36,7 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 
 		try
 		{
-			using var connection = new NpgsqlConnection(_connectionString);
-			connection.Open();
+			using var connection = _dynamicClient.GetConnection();
 			_logger.LogInformation($"Успешное подключение к PostgreSQL, таблица: {_tableName}");
 		}
 		catch (Exception ex)
@@ -42,8 +44,6 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 			_logger.LogError($"Ошибка подключения к PostgreSQL: {ex.Message}");
 			throw new InvalidOperationException("Не удалось подключиться к PostgreSQL", ex);
 		}
-
-		_logger = logger;
 	}
 
 	private string GetTableName(Type type) => type.Name switch
@@ -53,58 +53,13 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 		_ => throw new ArgumentException($"Неизвестный тип: {type.Name}")
 	};
 
-	private IDbConnection CreateConnection() => new NpgsqlConnection(_connectionString);
-
-	public async Task<T> GetByIdAsync(Guid id)
-	{
-		using var connection = CreateConnection();
-		var sql = $"SELECT * FROM {_tableName} WHERE id = @id";
-		return await _retryPolicy.ExecuteAsync(() => connection.QueryFirstOrDefaultAsync<T>(sql, new { id }));
-	}
-
-	public async Task<IEnumerable<T>> GetAllAsync()
-	{
-		using var connection = CreateConnection();
-		var sql = $"SELECT * FROM {_tableName}";
-		return await _retryPolicy.ExecuteAsync(() => connection.QueryAsync<T>(sql));
-	}
-
-	public async Task<IEnumerable<T>> FindAsync(string whereClause, object parameters = null)
-	{
-		using var connection = CreateConnection();
-		var sql = $"SELECT * FROM {_tableName} WHERE {whereClause}";
-		return await _retryPolicy.ExecuteAsync(() => connection.QueryAsync<T>(sql, parameters));
-	}
+	private IDbConnection CreateConnection() => _dynamicClient.GetConnection();
 
 	public async Task InsertAsync(T entity)
 	{
 		using var connection = CreateConnection();
 		var sql = GenerateInsertSql(entity);
 		await _retryPolicy.ExecuteAsync(() => connection.ExecuteAsync(sql, entity));
-	}
-
-	public async Task UpdateAsync(Guid id, T updatedEntity)
-	{
-		using var connection = CreateConnection();
-		var sql = GenerateUpdateSql(updatedEntity, id);
-		await _retryPolicy.ExecuteAsync(() => connection.ExecuteAsync(sql, updatedEntity));
-	}
-
-	public async Task DeleteByIdAsync(Guid id)
-	{
-		using var connection = CreateConnection();
-		var sql = $"DELETE FROM {_tableName} WHERE id = @id";
-		await _retryPolicy.ExecuteAsync(() => connection.ExecuteAsync(sql, new { id }));
-	}
-
-	public async Task<int> DeleteByTtlAsync(TimeSpan olderThan)
-	{
-		if (typeof(T) != typeof(OutboxMessage))
-			throw new InvalidOperationException("Метод поддерживает только OutboxMessage");
-
-		using var connection = CreateConnection();
-		var sql = $"DELETE FROM {_tableName} WHERE created_at < @cutoff AND is_processed = true";
-		return await _retryPolicy.ExecuteAsync(() => connection.ExecuteAsync(sql, new { cutoff = DateTime.UtcNow - olderThan }));
 	}
 
 	public async Task<List<T>> GetUnprocessedMessagesAsync()
@@ -115,38 +70,7 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 		return result.ToList();
 	}
 
-	public async Task MarkMessageAsProcessedAsync(Guid messageId)
-	{
-		using var connection = CreateConnection();
-		var sql = $@"
-		UPDATE {_tableName}
-		SET is_processed = true,
-			processed_at = @now
-		WHERE id = @messageId";
-
-		await _retryPolicy.ExecuteAsync(() =>
-			connection.ExecuteAsync(sql, new { messageId, now = DateTime.UtcNow }));
-	}
-
 	public async Task SaveMessageAsync(T message) => await InsertAsync(message);
-
-	public async Task UpdateMessageAsync(T message)
-	{
-		if (message is OutboxMessage outboxMessage)
-		{
-			const string sql = @"
-				UPDATE outbox_messages 
-				SET is_processed = @IsProcessed, processed_at = @ProcessedAt 
-				WHERE id = @Id";
-
-			using var connection = CreateConnection();
-			await _retryPolicy.ExecuteAsync(() => connection.ExecuteAsync(sql, outboxMessage));
-		}
-		else
-		{
-			throw new InvalidOperationException("UpdateMessageAsync поддерживает только OutboxMessage");
-		}
-	}
 
 	private string GenerateInsertSql(T entity)
 	{
@@ -261,7 +185,6 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 		}
 	}
 
-	// Вспомогательный метод для PostgreSQL
 	private Guid GetMessageIdGeneric(T message)
 	{
 		var idProperty = typeof(T).GetProperty("Id");
@@ -270,66 +193,6 @@ public class PostgresRepository<T> : IPostgresRepository<T> where T : class
 			return (Guid)idProperty.GetValue(message);
 		}
 		throw new InvalidOperationException($"Не найдено свойство Id типа Guid в {typeof(T).Name}");
-	}
-
-	public async Task InsertMessagesAsync(IEnumerable<T> messages)
-	{
-		if (messages == null || !messages.Any())
-			return;
-
-		using var connection = CreateConnection();
-		connection.Open();
-
-		using var transaction = connection.BeginTransaction();
-
-		try
-		{
-			foreach (var message in messages)
-			{
-				var sql = GenerateInsertSql(message);
-				await connection.ExecuteAsync(sql, message, transaction);
-			}
-
-			transaction.Commit();
-		}
-		catch
-		{
-			transaction.Rollback();
-			throw;
-		}
-	}
-
-	public async Task DeleteMessagesAsync(IEnumerable<Guid> ids)
-	{
-		if (ids == null || !ids.Any())
-			return;
-
-		using var connection = CreateConnection();
-		var sql = $"DELETE FROM {_tableName} WHERE id = ANY(@Ids)";
-		await connection.ExecuteAsync(sql, new { Ids = ids.ToArray() });
-	}
-
-	public async Task<int> DeleteOldIncidentsAsync(DateTime cutoffDate)
-	{
-		using var connection = CreateConnection();
-
-		var sql = $"DELETE FROM {_tableName} WHERE created_at < @cutoff";
-
-		try
-		{
-			var deletedCount = await _retryPolicy.ExecuteAsync(() =>
-				connection.ExecuteAsync(sql, new { cutoff = cutoffDate }));
-
-			_logger.LogInformation("Deleted {Count} old incidents from PostgreSQL table {Table} (older than {CutoffDate})",
-				deletedCount, _tableName, cutoffDate);
-
-			return deletedCount;
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error deleting old incidents from PostgreSQL table {Table}", _tableName);
-			return 0;
-		}
 	}
 
 	public async Task<int> DeleteOldRecordsAsync(DateTime cutoffDate, bool requireProcessed = false)

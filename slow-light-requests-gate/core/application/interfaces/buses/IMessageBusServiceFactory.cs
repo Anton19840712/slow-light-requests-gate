@@ -9,5 +9,7 @@
 		void SetDefaultBusType(string busType);
 		string GetCurrentBusType();
 		Task<bool> TestCurrentBusConnectionAsync();
+		void SetDynamicBusInstance(string busType, IMessageBusService busService);
+		void RestoreDefaultBusConfiguration(string busType);
 	}
 }
