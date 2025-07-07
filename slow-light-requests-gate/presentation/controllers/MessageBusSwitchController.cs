@@ -154,44 +154,6 @@ namespace lazy_light_requests_gate.presentation.controllers
 		}
 
 		/// <summary>
-		/// Восстановление конфигурации по умолчанию
-		/// </summary>
-		[HttpPost("restore-default/{busType}")]
-		public IActionResult RestoreDefaultConfiguration(string busType)
-		{
-			try
-			{
-				if (string.IsNullOrWhiteSpace(busType))
-					return BadRequest("Bus type is required");
-
-				var normalizedBusType = BusTypeHelper.Normalize(busType);
-
-				if (!BusTypeHelper.IsValidBusType(normalizedBusType))
-					return BadRequest("Supported bus types: 'rabbit', 'activemq', 'pulsar', 'kafkastreams', 'tarantool'");
-
-				_busManager.RestoreDefaultConfiguration(normalizedBusType);
-
-				_logger.LogInformation("Default configuration restored for bus type: {BusType}", normalizedBusType);
-
-				return Ok(new
-				{
-					message = $"Default configuration restored for {normalizedBusType}",
-					busType = normalizedBusType,
-					timestamp = DateTime.UtcNow
-				});
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error restoring default configuration for bus type: {BusType}", busType);
-				return StatusCode(500, new
-				{
-					message = "Error restoring default configuration",
-					error = ex.Message
-				});
-			}
-		}
-
-		/// <summary>
 		/// Получение информации о текущем подключении
 		/// </summary>
 		[HttpGet("connection-info")]
