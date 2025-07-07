@@ -1,6 +1,6 @@
 ﻿using domain.enums;
 
-namespace domain.models.response
+namespace lazy_light_requests_gate.temp.models
 {
     public class BusInformationDto
     {

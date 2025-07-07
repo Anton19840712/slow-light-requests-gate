@@ -1,6 +1,4 @@
-﻿using domain.models.dynamicgatesettings.incomingjson;
-
-namespace domain.models.dynamicgatesettings.internalusage
+﻿namespace lazy_light_requests_gate.temp.models
 {
 	/// <summary>
 	/// Модель для сервера

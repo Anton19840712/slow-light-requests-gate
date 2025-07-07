@@ -1,4 +1,4 @@
-﻿namespace domain.models.response
+﻿namespace lazy_light_requests_gate.temp.models
 {
 	/// <summary>
 	/// Модель ответов с результатами сервисов по настройке динамического шлюза. 

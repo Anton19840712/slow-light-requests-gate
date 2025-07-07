@@ -1,4 +1,4 @@
-﻿namespace domain.models.dynamicgatesettings.internalusage
+﻿namespace lazy_light_requests_gate.temp.models
 {
 	/// <summary>
 	/// Базовая модель для подключения

@@ -10,6 +10,20 @@
   "CleanupIntervalSeconds": 5,
   "OutboxMessageTtlSeconds": 10,
   "IncidentEntitiesTtlMonths": 60,
+  "Protocol": "TCP",
+  "DataFormat": "json",
+  "DataOptions": {
+    "client": false,
+    "server": true,
+    "serverDetails": {
+      "host": "127.0.0.1",
+      "port": 6254
+    },
+    "clientDetails": {
+      "host": "127.0.0.1",
+      "port": 5001
+    }
+  },
   "PostgresDbSettings": {
     "Host": "localhost",
     "Port": 5432,
@@ -17,16 +31,16 @@
     "Password": "mysecret",
     "Database": "GatewayDB"
   },
-"MongoDbSettings": {
-  "ConnectionString": "mongodb://root:secret123@localhost:27018",
-  "DatabaseName": "GatewayDB",
-  "User": "root",
-  "Password": "secret123",
-  "Collections": {
-    "OutboxCollection": "OutboxMessages",
-    "IncidentCollection": "IncidentEntities"
-  }
-},
+ "MongoDbSettings": {
+    "ConnectionString": "mongodb://root:secret123@localhost:27018",
+    "DatabaseName": "GatewayDB",
+    "User": "root",
+    "Password": "secret123",
+    "Collections": {
+      "OutboxCollection": "OutboxMessages",
+      "IncidentCollection": "IncidentEntities"
+    }
+  },
 	"RabbitMqSettings": {
 	  "InstanceNetworkGateId": "gate-rmq-002",
 	  "TypeToRun": "RabbitMQ",

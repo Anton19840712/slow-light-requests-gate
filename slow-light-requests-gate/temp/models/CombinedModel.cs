@@ -1,6 +1,6 @@
-﻿using domain.models.dynamicgatesettings.incomingjson;
+﻿using lazy_light_requests_gate.core.domain.settings.common;
 
-namespace domain.models.dynamicgatesettings.internalusage
+namespace lazy_light_requests_gate.temp.models
 {
 	/// <summary>
 	/// Модель для пересылки на bpm для ее обучения работе с новыми структурами данных.

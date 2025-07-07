@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
+using lazy_light_requests_gate.temp.models;
 
-namespace domain.models.dynamicgatesettings.incomingjson
+namespace lazy_light_requests_gate.core.domain.settings.common
 {
 	public record class DataOptions
 	{

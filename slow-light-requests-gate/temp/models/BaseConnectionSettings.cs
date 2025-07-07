@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace domain.models.dynamicgatesettings.incomingjson
+namespace lazy_light_requests_gate.temp.models
 {
 	public record class BaseConnectionSettings
 	{
