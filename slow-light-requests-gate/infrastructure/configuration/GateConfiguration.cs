@@ -12,7 +12,13 @@ public static class GateConfiguration
 {
 	// Поддерживаемые шины сообщений
 	private static readonly string[] SupportedMessageBuses = { "rabbit", "activemq", "pulsar", "tarantool", "kafkastreams" };
+	
+	// Поддерживаемые протоколы
+	private static readonly string[] SupportedProtocols = { "tcp", "udp", "websockets" };
 
+	// Поддерживаемые форматы данных
+	private static readonly string[] SupportedDataFormats = { "json", "xml", "binary", "protobuf" };
+	
 	// Поддерживаемые базы данных  
 	private static readonly string[] SupportedDatabases = { "postgres", "mongo" };
 
@@ -23,6 +29,12 @@ public static class GateConfiguration
 	{
 		var configFilePath = args.FirstOrDefault(a => a.StartsWith("--config="))?.Substring(9) ?? "gate-config.json";
 		var config = LoadConfiguration(configFilePath);
+
+		var database = config["Database"]?.ToString() ?? "mongo";
+		var bus = config["Bus"]?.ToString() ?? "rabbit";
+		var protocol = config["Protocol"]?.ToString() ?? "tcp";
+		var dataFormat = config["DataFormat"]?.ToString() ?? "json";
+		var cleanupIntervalSeconds = int.TryParse(config["CleanupIntervalSeconds"]?.ToString(), out var c) ? c : 10;
 
 		// Валидируем базовую структуру конфигурации
 		ValidateBasicConfiguration(config);
@@ -45,7 +57,7 @@ public static class GateConfiguration
 		var incidentEntitiesTtlMonths = int.TryParse(config["IncidentEntitiesTtlMonths"]?.ToString(), out var incident) ? incident : 10;
 
 		// Валидируем выбранные параметры
-		ValidateConfiguration(database, bus, config);
+		ValidateConfiguration(database, bus, protocol, dataFormat, config);
 
 		// Парсим в strongly typed модель для дополнительной валидации
 		var gateConfig = ParseToStronglyTypedModel(config);
@@ -77,6 +89,10 @@ public static class GateConfiguration
 		builder.Configuration["Validate"] = enableValidation.ToString();
 		builder.Configuration["Database"] = database;
 		builder.Configuration["Bus"] = bus;
+		builder.Configuration["Bus"] = bus;
+		builder.Configuration["Protocol"] = protocol;
+		builder.Configuration["DataFormat"] = dataFormat;
+		builder.Configuration["CleanupIntervalSeconds"] = cleanupIntervalSeconds.ToString();
 		builder.Configuration["CleanupIntervalSeconds"] = cleanupIntervalSeconds.ToString();
 		builder.Configuration["OutboxMessageTtlSeconds"] = outboxMessageTtlSeconds.ToString();
 		builder.Configuration["IncidentEntitiesTtlMonths"] = incidentEntitiesTtlMonths.ToString();
@@ -84,12 +100,34 @@ public static class GateConfiguration
 		// Настройка базы данных
 		await ConfigureDatabase(config, builder, database);
 
+		// Настройка DataOptions
+		var dataOptions = config["DataOptions"];
+		if (dataOptions != null)
+		{
+			builder.Configuration["DataOptions:client"] = dataOptions["client"]?.ToString() ?? "false";
+			builder.Configuration["DataOptions:server"] = dataOptions["server"]?.ToString() ?? "true";
+
+			var serverDetails = dataOptions["serverDetails"];
+			if (serverDetails != null)
+			{
+				builder.Configuration["DataOptions:serverDetails:host"] = serverDetails["host"]?.ToString() ?? "127.0.0.1";
+				builder.Configuration["DataOptions:serverDetails:port"] = serverDetails["port"]?.ToString() ?? "6254";
+			}
+
+			var clientDetails = dataOptions["clientDetails"];
+			if (clientDetails != null)
+			{
+				builder.Configuration["DataOptions:clientDetails:host"] = clientDetails["host"]?.ToString() ?? "127.0.0.1";
+				builder.Configuration["DataOptions:clientDetails:port"] = clientDetails["port"]?.ToString() ?? "5001";
+			}
+		}
+
 		// Настройка шины сообщений  
 		await ConfigureMessageBus(config, builder, bus);
 
 		// Красивое логирование конфигурации
 		LogDetailedConfiguration(companyName, host, portHttp, portHttps, enableValidation, database, bus,
-			cleanupIntervalSeconds, outboxMessageTtlSeconds, incidentEntitiesTtlMonths, config);
+			cleanupIntervalSeconds, outboxMessageTtlSeconds, incidentEntitiesTtlMonths, protocol, dataFormat, config);
 
 		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:{portHttp}";
@@ -147,7 +185,7 @@ public static class GateConfiguration
 		}
 	}
 
-	private static void ValidateConfiguration(string database, string bus, JObject config)
+	private static void ValidateConfiguration(string database, string bus, string protocol, string dataFormat, JObject config)
 	{
 		// Валидация базы данных
 		if (!SupportedDatabases.Contains(database.ToLower()))
@@ -177,6 +215,18 @@ public static class GateConfiguration
 		if (config[busSettingsKey] == null)
 		{
 			throw new InvalidOperationException($"{busSettingsKey} обязательны когда Bus = '{bus}'");
+		}
+
+		// Валидация протокола
+		if (!SupportedProtocols.Contains(protocol.ToLower()))
+		{
+			throw new InvalidOperationException($"Неподдерживаемый протокол: {protocol}. Поддерживаются: {string.Join(", ", SupportedProtocols)}");
+		}
+
+		// Валидация формата данных
+		if (!SupportedDataFormats.Contains(dataFormat.ToLower()))
+		{
+			throw new InvalidOperationException($"Неподдерживаемый формат данных: {dataFormat}. Поддерживаются: {string.Join(", ", SupportedDataFormats)}");
 		}
 	}
 
@@ -557,7 +607,7 @@ public static class GateConfiguration
 
 	private static void LogDetailedConfiguration(string companyName, string host, int portHttp, int portHttps, bool enableValidation,
 		string database, string bus, int cleanupIntervalSeconds, int outboxMessageTtlSeconds, int incidentEntitiesTtlMonths,
-		JObject config)
+		string protocol, string dataFormat, JObject config)
 	{
 		var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
 
@@ -621,10 +671,23 @@ public static class GateConfiguration
 				Console.ResetColor();
 			}
 		}
-
+		// Логирование DataOptions
+		var dataOptions = config["DataOptions"];
+		if (dataOptions != null)
+		{
+			Console.ForegroundColor = ConsoleColor.DarkCyan;
+			Console.WriteLine($"Server режим:          {dataOptions["server"]} ({dataOptions["serverDetails"]?["host"]}:{dataOptions["serverDetails"]?["port"]})");
+			Console.WriteLine($"Client режим:          {dataOptions["client"]} ({dataOptions["clientDetails"]?["host"]}:{dataOptions["clientDetails"]?["port"]})");
+			Console.ResetColor();
+		}
 		// Подробности шины сообщений
 		LogBusDetails(bus, config);
-
+		Console.ForegroundColor = ConsoleColor.Yellow;
+		Console.WriteLine($"База данных:           {database.ToUpper()}");
+		Console.WriteLine($"Шина сообщений:        {bus.ToUpper()}");
+		Console.WriteLine($"Протокол:              {protocol.ToUpper()}");
+		Console.WriteLine($"Формат данных:         {dataFormat.ToUpper()}");
+		Console.ResetColor();
 		Console.ForegroundColor = ConsoleColor.Cyan;
 		Console.WriteLine("═══════════════════════════════════════════════════════════════");
 		Console.ResetColor();
