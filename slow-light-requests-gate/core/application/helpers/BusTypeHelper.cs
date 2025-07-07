@@ -1,4 +1,4 @@
-﻿namespace lazy_light_requests_gate.presentation.helpers
+﻿namespace lazy_light_requests_gate.core.application.helpers
 {
 	/// <summary>
 	/// Хелпер для нормализации типов шин сообщений

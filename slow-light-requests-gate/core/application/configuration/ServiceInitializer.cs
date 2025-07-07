@@ -1,4 +1,6 @@
-﻿namespace lazy_light_requests_gate.infrastructure.startup
+﻿using lazy_light_requests_gate.infrastructure.data.initialization;
+
+namespace lazy_light_requests_gate.core.application.configuration
 {
 	public class ServiceInitializer
 	{

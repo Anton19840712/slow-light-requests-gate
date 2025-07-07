@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.buses;
 
-namespace lazy_light_requests_gate.infrastructure.startup
+namespace lazy_light_requests_gate.infrastructure.data.initialization
 {
 	public class MessageBusInitializer
 	{

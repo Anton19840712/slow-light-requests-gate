@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.presentation.enums;
 
-namespace lazy_light_requests_gate.presentation.models.settings.buses
+namespace lazy_light_requests_gate.core.domain.settings.buses
 {
 	public abstract class MessageBusBaseSettings
 	{

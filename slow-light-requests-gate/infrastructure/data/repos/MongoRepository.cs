@@ -1,7 +1,7 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.databases;
 using lazy_light_requests_gate.core.application.interfaces.repos;
 using lazy_light_requests_gate.core.domain.entities;
-using lazy_light_requests_gate.presentation.models.settings.databases;
+using lazy_light_requests_gate.core.domain.settings.databases;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;

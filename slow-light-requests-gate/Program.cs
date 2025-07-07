@@ -1,4 +1,4 @@
-using lazy_light_requests_gate.infrastructure.startup;
+using lazy_light_requests_gate.core.application.configuration;
 using Serilog;
 
 Console.Title = "slow & light rest http protocol dynamic gate";

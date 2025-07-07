@@ -1,4 +1,4 @@
-﻿namespace lazy_light_requests_gate.presentation.constants
+﻿namespace lazy_light_requests_gate.core.domain.constants
 {
 	public static class Constants
 	{

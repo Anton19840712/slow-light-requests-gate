@@ -1,5 +1,5 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.buses;
-using lazy_light_requests_gate.presentation.models.settings.buses;
+using lazy_light_requests_gate.core.domain.settings.buses;
 using System.Collections.Concurrent;
 
 namespace lazy_light_requests_gate.core.application.services.buses;

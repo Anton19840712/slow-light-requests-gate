@@ -1,4 +1,4 @@
-﻿using lazy_light_requests_gate.presentation.models.settings.common;
+﻿using lazy_light_requests_gate.core.domain.settings.common;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel.DataAnnotations;
 

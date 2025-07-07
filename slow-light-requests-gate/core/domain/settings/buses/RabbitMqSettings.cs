@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace lazy_light_requests_gate.presentation.models.settings.buses
+namespace lazy_light_requests_gate.core.domain.settings.buses
 {
 	public class RabbitMqSettings : MessageBusBaseSettings
 	{

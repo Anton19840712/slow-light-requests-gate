@@ -1,11 +1,11 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Bson.Serialization;
-using lazy_light_requests_gate.presentation.models.settings.databases;
 using lazy_light_requests_gate.core.application.interfaces.repos;
 using lazy_light_requests_gate.infrastructure.data.repos;
 using lazy_light_requests_gate.core.application.interfaces.databases;
 using lazy_light_requests_gate.core.application.services.databases;
+using lazy_light_requests_gate.core.domain.settings.databases;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {

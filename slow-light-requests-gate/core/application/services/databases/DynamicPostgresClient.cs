@@ -1,6 +1,6 @@
 ﻿using Dapper;
 using lazy_light_requests_gate.core.application.interfaces.databases;
-using lazy_light_requests_gate.presentation.models.settings.databases;
+using lazy_light_requests_gate.core.domain.settings.databases;
 using Npgsql;
 using System.Data;
 using System.Text.Json;

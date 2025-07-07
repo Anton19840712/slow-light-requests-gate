@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace lazy_light_requests_gate.presentation.models.settings.databases
+namespace lazy_light_requests_gate.core.domain.settings.databases
 {
 	public class MongoDbCollectionSettings
 	{

@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.infrastructure.configuration;
 
-namespace lazy_light_requests_gate.infrastructure.startup
+namespace lazy_light_requests_gate.infrastructure.data.initialization
 {
 	public class DatabaseInitializer
 	{

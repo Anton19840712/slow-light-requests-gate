@@ -1,5 +1,5 @@
-﻿using lazy_light_requests_gate.core.application.interfaces.buses;
-using lazy_light_requests_gate.presentation.helpers;
+﻿using lazy_light_requests_gate.core.application.helpers;
+using lazy_light_requests_gate.core.application.interfaces.buses;
 using lazy_light_requests_gate.presentation.models.common;
 using lazy_light_requests_gate.presentation.models.request;
 using Microsoft.AspNetCore.Mvc;

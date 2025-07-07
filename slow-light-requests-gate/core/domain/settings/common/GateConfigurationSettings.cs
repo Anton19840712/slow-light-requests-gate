@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using lazy_light_requests_gate.presentation.models.settings.buses;
-using lazy_light_requests_gate.presentation.models.settings.databases;
+using lazy_light_requests_gate.core.domain.settings.buses;
+using lazy_light_requests_gate.core.domain.settings.databases;
 
-namespace lazy_light_requests_gate.presentation.models.settings.common
+namespace lazy_light_requests_gate.core.domain.settings.common
 {
 
 
