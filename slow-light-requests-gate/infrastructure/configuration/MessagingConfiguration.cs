@@ -1,7 +1,7 @@
-﻿using application.interfaces.services;
-using infrastructure.messaging;
-using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+﻿using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+using lazy_light_requests_gate.core.application.interfaces.messaging;
 using lazy_light_requests_gate.core.application.services.messageprocessing;
+using lazy_light_requests_gate.core.application.services.messaging;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {

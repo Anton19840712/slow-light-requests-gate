@@ -1,6 +1,5 @@
-
-using application.interfaces.networking;
-using infrastructure.networking;
+using lazy_light_requests_gate.core.application.interfaces.networking;
+using lazy_light_requests_gate.infrastructure.networking;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {

@@ -1,5 +1,5 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.headers;
-using lazy_light_requests_gate.presentation.models.response;
+using lazy_light_requests_gate.temp.models;
 
 namespace lazy_light_requests_gate.core.application.services.validators
 {

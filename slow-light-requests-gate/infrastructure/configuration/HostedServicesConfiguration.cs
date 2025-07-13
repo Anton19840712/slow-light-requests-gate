@@ -1,5 +1,4 @@
-﻿using infrastructure.services.background;
-using lazy_light_requests_gate.infrastructure.background;
+﻿using lazy_light_requests_gate.infrastructure.background;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {

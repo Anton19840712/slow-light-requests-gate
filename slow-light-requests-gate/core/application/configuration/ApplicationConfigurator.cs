@@ -1,4 +1,4 @@
-﻿using lazy_light_requests_gate.temp.apptypeswitcher;
+﻿using lazy_light_requests_gate.presentation.middleware;
 using Serilog;
 
 namespace lazy_light_requests_gate.core.application.configuration

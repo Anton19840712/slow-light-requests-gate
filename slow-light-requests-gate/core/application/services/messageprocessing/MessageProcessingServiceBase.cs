@@ -1,5 +1,4 @@
-﻿using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
-using lazy_light_requests_gate.core.application.services.common;
+﻿using lazy_light_requests_gate.core.application.services.common;
 using lazy_light_requests_gate.core.domain.entities;
 
 namespace lazy_light_requests_gate.core.application.services.messageprocessing
