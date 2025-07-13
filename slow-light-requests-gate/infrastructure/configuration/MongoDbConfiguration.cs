@@ -14,7 +14,6 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 		public static IServiceCollection AddMongoDbServices(this IServiceCollection services, IConfiguration configuration)
 		{
 			var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-			Console.WriteLine($"[{timestamp}] [CONFIG] Настройка MongoDB сервисов...");
 
 			var mongoSettings = configuration.GetSection("MongoDbSettings");
 			services.Configure<MongoDbSettings>(mongoSettings);
@@ -34,11 +33,7 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 
 			// ГЛАВНОЕ ИЗМЕНЕНИЕ: Регистрируем только динамический клиент
 			services.AddSingleton<IDynamicMongoClient, DynamicMongoClient>();
-
-			// Регистрируем репозитории MongoDB с динамическим клиентом
 			services.AddScoped(typeof(IMongoRepository<>), typeof(MongoRepository<>));
-
-			Console.WriteLine($"[{timestamp}] [SUCCESS] MongoDB динамические сервисы успешно зарегистрированы");
 			return services;
 		}
 	}

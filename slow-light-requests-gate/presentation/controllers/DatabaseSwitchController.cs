@@ -1,5 +1,6 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.databases;
 using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+using lazy_light_requests_gate.temp.apptypeswitcher;
 using Microsoft.AspNetCore.Mvc;
 
 namespace lazy_light_requests_gate.presentation.сontrollers
@@ -25,6 +26,7 @@ namespace lazy_light_requests_gate.presentation.сontrollers
 		}
 
 		[HttpPost("switch")]
+		[RequireEitherAPIRuntime]
 		public IActionResult SwitchDatabase([FromBody] DatabaseSwitchRequest request)
 		{
 			try
@@ -58,6 +60,7 @@ namespace lazy_light_requests_gate.presentation.сontrollers
 		}
 
 		[HttpGet("current")]
+		[RequireEitherAPIRuntime]
 		public IActionResult GetCurrentDatabase()
 		{
 			return Ok(new
@@ -67,6 +70,7 @@ namespace lazy_light_requests_gate.presentation.сontrollers
 		}
 
 		[HttpPost("reconnect")]
+		[RequireEitherAPIRuntime]
 		public async Task<IActionResult> ReconnectWithNewParameters([FromBody] DatabaseReconnectRequest request)
 		{
 			try

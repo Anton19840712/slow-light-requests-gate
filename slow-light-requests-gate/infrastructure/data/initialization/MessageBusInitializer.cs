@@ -32,15 +32,14 @@ namespace lazy_light_requests_gate.infrastructure.data.initialization
 
 		private async Task InitializeRabbitMqAsync(IServiceProvider services, IConfiguration configuration, string timestamp)
 		{
-			Console.WriteLine($"[{timestamp}] [INIT] Инициализация ТОЛЬКО RabbitMQ...");
-
 			try
 			{
 				var rabbitService = services.GetRequiredService<IRabbitMqBusService>();
 				await rabbitService.TestConnectionAsync();
 				Console.WriteLine($"[{timestamp}] [SUCCESS] RabbitMQ подключение протестировано успешно");
 
-				var queueName = configuration["RabbitMqSettings:ListenQueueName"];
+				// создаем очередь первый раз:
+				var queueName = configuration["RabbitMqSettings:OutputChannel"];
 				if (!string.IsNullOrEmpty(queueName))
 				{
 					await rabbitService.StartListeningAsync(queueName, CancellationToken.None);
@@ -68,7 +67,7 @@ namespace lazy_light_requests_gate.infrastructure.data.initialization
 				{
 					Console.WriteLine($"[{timestamp}] [SUCCESS] ActiveMQ подключение протестировано успешно");
 
-					var queueName = configuration["ActiveMqSettings:ListenQueueName"];
+					var queueName = configuration["ActiveMqSettings:OutputChannel"];
 					if (!string.IsNullOrEmpty(queueName))
 					{
 						await activeMqService.StartListeningAsync(queueName, CancellationToken.None);

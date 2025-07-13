@@ -4,7 +4,7 @@ using lazy_light_requests_gate.core.domain.entities;
 
 namespace lazy_light_requests_gate.core.application.services.messageprocessing
 {
-	public abstract class MessageProcessingServiceBase : IMessageProcessingService
+	public abstract class MessageProcessingServiceBase //: IMessageProcessingService
 	{
 		protected readonly ILogger _logger;
 
@@ -15,15 +15,15 @@ namespace lazy_light_requests_gate.core.application.services.messageprocessing
 
 		public async Task ProcessForSaveIncomingMessageAsync(
 			string message,
-			string instanceModelQueueOutName,
-			string instanceModelQueueInName,
+			string channelOut,
+			string channelIn,
 			string host,
 			int? port,
 			string protocol)
 		{
 			try
 			{
-				var outboxMessage = MessageFactory.CreateOutboxMessage(message, instanceModelQueueInName, instanceModelQueueOutName, protocol, host, port);
+				var outboxMessage = MessageFactory.CreateOutboxMessage(message, channelIn, channelOut, protocol, host, port);
 
 				var incidentEntity = MessageFactory.CreateIncidentEntity(message, protocol);
 

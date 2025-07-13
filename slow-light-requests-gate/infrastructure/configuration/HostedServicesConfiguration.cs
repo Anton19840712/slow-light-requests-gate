@@ -1,4 +1,5 @@
-﻿using lazy_light_requests_gate.infrastructure.background;
+﻿using infrastructure.services.background;
+using lazy_light_requests_gate.infrastructure.background;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {
@@ -9,15 +10,11 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 		/// </summary>
 		public static IServiceCollection AddHostedServices(this IServiceCollection services, IConfiguration configuration)
 		{
-			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
-
-			// Регистрируем обычные сервисы для возможности их получения через DI
-			services.AddHostedService<QueueListenerRabbitBackgroundService>();
-
 			// Регистрируем динамические фоновые сервисы
 			services.AddHostedService<DynamicOutboxCleanupService>();
 			services.AddHostedService<DynamicIncidentCleanupService>();
-
+			services.AddHostedService<NetworkServerHostedService>();
+			
 			return services;
 		}
 	}

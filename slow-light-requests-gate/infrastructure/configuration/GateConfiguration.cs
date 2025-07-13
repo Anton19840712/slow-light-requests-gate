@@ -1,4 +1,5 @@
 ﻿using lazy_light_requests_gate.core.domain.settings.common;
+using lazy_light_requests_gate.presentation.enums;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel.DataAnnotations;
 
@@ -22,6 +23,11 @@ public static class GateConfiguration
 	// Поддерживаемые базы данных  
 	private static readonly string[] SupportedDatabases = { "postgres", "mongo" };
 
+	private static readonly string[] SupportedApplicationTypes = { "restonly", "streamonly", "both" };
+
+	private static string _inPushChannel;
+	private static string _outPullChannel;
+
 	/// <summary>
 	/// Настройка динамических параметров шлюза и возврат HTTP/HTTPS адресов
 	/// </summary>
@@ -30,21 +36,73 @@ public static class GateConfiguration
 		var configFilePath = args.FirstOrDefault(a => a.StartsWith("--config="))?.Substring(9) ?? "gate-config.json";
 		var config = LoadConfiguration(configFilePath);
 
-		var database = config["Database"]?.ToString() ?? "mongo";
-		var bus = config["Bus"]?.ToString() ?? "rabbit";
-		var protocol = config["Protocol"]?.ToString() ?? "tcp";
-		var dataFormat = config["DataFormat"]?.ToString() ?? "json";
-		var cleanupIntervalSeconds = int.TryParse(config["CleanupIntervalSeconds"]?.ToString(), out var c) ? c : 10;
-
 		// Валидируем базовую структуру конфигурации
 		ValidateBasicConfiguration(config);
 
 		var configType = config["type"]?.ToString() ?? config["Type"]?.ToString();
 		return await ConfigureRestGate(config, builder);
 	}
+	/// <summary>
+	/// Нормализует значения конфигурации к нижнему регистру
+	/// </summary>
+	private static void NormalizeConfigurationValues(JObject config)
+	{
+		var fieldsToNormalize = new[] { "Database", "Bus", "Protocol", "DataFormat" };
 
+		foreach (var field in fieldsToNormalize)
+		{
+			if (config[field] != null)
+			{
+				config[field] = config[field].ToString().ToLowerInvariant();
+			}
+		}
+	}
+	private static Mode GetMode(bool client, bool server)
+	{
+		if (client)
+			return Mode.Client;
+		if (server)
+			return Mode.Server;
+		return Mode.Unknown;
+	}
+
+	/// <summary>
+	/// Устанавливаем параметры конфигурационного шлюза.
+	/// </summary>
+	/// <param name="config"></param>
+	/// <param name="builder"></param>
+	/// <returns></returns>
 	private static async Task<(string HttpUrl, string HttpsUrl)> ConfigureRestGate(JObject config, WebApplicationBuilder builder)
 	{
+		// Настройка DataOptions
+		var dataOptions = config["DataOptions"];
+		if (dataOptions != null)
+		{
+			var client = bool.TryParse(dataOptions["client"]?.ToString(), out var clientParsed) && clientParsed;
+			var server = bool.TryParse(dataOptions["server"]?.ToString(), out var serverParsed) && serverParsed;
+
+			builder.Configuration["DataOptions:client"] = client.ToString();
+			builder.Configuration["DataOptions:server"] = server.ToString();
+
+			// Вычисляем и устанавливаем Mode
+			var mode = GetMode(client, server);
+			builder.Configuration["Mode"] = mode.ToString();
+
+			var serverDetails = dataOptions["serverDetails"];
+			if (serverDetails != null)
+			{
+				builder.Configuration["DataOptions:serverDetails:host"] = serverDetails["host"]?.ToString() ?? "127.0.0.1";
+				builder.Configuration["DataOptions:serverDetails:port"] = serverDetails["port"]?.ToString() ?? "6254";
+			}
+
+			var clientDetails = dataOptions["clientDetails"];
+			if (clientDetails != null)
+			{
+				builder.Configuration["DataOptions:clientDetails:host"] = clientDetails["host"]?.ToString() ?? "127.0.0.1";
+				builder.Configuration["DataOptions:clientDetails:port"] = clientDetails["port"]?.ToString() ?? "5001";
+			}
+		}
+
 		var companyName = config["CompanyName"]?.ToString() ?? "default-company";
 		var host = config["Host"]?.ToString() ?? "localhost";
 		var portHttp = int.TryParse(config["PortHttp"]?.ToString(), out var ph) ? ph : 80;
@@ -52,9 +110,20 @@ public static class GateConfiguration
 		var enableValidation = bool.TryParse(config["Validate"]?.ToString(), out var v) && v;
 		var database = config["Database"]?.ToString() ?? "mongo";
 		var bus = config["Bus"]?.ToString() ?? "rabbit";
-		var cleanupIntervalSeconds = int.TryParse(config["CleanupIntervalSeconds"]?.ToString(), out var c) ? c : 10;
+		var protocol = config["Protocol"]?.ToString() ?? "tcp";
+		var dataFormat = config["DataFormat"]?.ToString() ?? "json";
+		var cleanupIntervalSeconds = int.TryParse(config["CleanupIntervalSeconds"]?.ToString(), out var c) ? c : 10; 
 		var outboxMessageTtlSeconds = int.TryParse(config["OutboxMessageTtlSeconds"]?.ToString(), out var ttl) ? ttl : 10;
 		var incidentEntitiesTtlMonths = int.TryParse(config["IncidentEntitiesTtlMonths"]?.ToString(), out var incident) ? incident : 10;
+		var applicationType = config["Type"]?.ToString()?.ToLowerInvariant() ?? "restonly";
+
+		// устанавливаем название очередей для дальнейшейго переиспользования в классе:
+		_inPushChannel = config["InputChannel"]?.ToString() ?? "default-in-channel";
+		_outPullChannel = config["OutputChannel"]?.ToString() ?? "default-out-channel";
+		_outPullChannel = config["OutputChannel"]?.ToString() ?? "default-out-channel";
+
+		//НОРМАЛИЗУЕМ JSON ПЕРЕД ПАРСИНГОМ В МОДЕЛЬ
+		NormalizeConfigurationValues(config);
 
 		// Валидируем выбранные параметры
 		ValidateConfiguration(database, bus, protocol, dataFormat, config);
@@ -79,55 +148,42 @@ public static class GateConfiguration
 		// Основные параметры конфигурации
 		builder.Configuration["CompanyName"] = companyName;
 
-		var (queueIn, queueOut) = GenerateQueueNames(companyName);
-
-		builder.Configuration["QueueIn"] = queueIn;
-		builder.Configuration["QueueOut"] = queueOut;
 		builder.Configuration["Host"] = host;
 		builder.Configuration["PortHttp"] = portHttp.ToString();
 		builder.Configuration["PortHttps"] = portHttps.ToString();
 		builder.Configuration["Validate"] = enableValidation.ToString();
 		builder.Configuration["Database"] = database;
 		builder.Configuration["Bus"] = bus;
-		builder.Configuration["Bus"] = bus;
 		builder.Configuration["Protocol"] = protocol;
 		builder.Configuration["DataFormat"] = dataFormat;
-		builder.Configuration["CleanupIntervalSeconds"] = cleanupIntervalSeconds.ToString();
-		builder.Configuration["CleanupIntervalSeconds"] = cleanupIntervalSeconds.ToString();
+		builder.Configuration["CleanupIntervalSeconds"] = cleanupIntervalSeconds.ToString(); 
 		builder.Configuration["OutboxMessageTtlSeconds"] = outboxMessageTtlSeconds.ToString();
 		builder.Configuration["IncidentEntitiesTtlMonths"] = incidentEntitiesTtlMonths.ToString();
 
+		builder.Configuration["ApplicationType"] = applicationType;
+		if (!SupportedApplicationTypes.Contains(applicationType))
+		{
+			throw new InvalidOperationException($"Неподдерживаемый тип приложения: {applicationType}. Поддерживаются: {string.Join(", ", SupportedApplicationTypes)}");
+		}
+
+		// частные для внутреннего использования названия:
+		builder.Configuration["ProtocolTcpValue"] = "tcp";
+		builder.Configuration["ProtocolUdpValue"] = "udp";
+		builder.Configuration["ProtocolWsValue"] = "ws";
+
+		builder.Configuration["Inputchannel"] = _inPushChannel;
+		builder.Configuration["OutputChannel"] = _outPullChannel;
+
 		// Настройка базы данных
 		await ConfigureDatabase(config, builder, database);
-
-		// Настройка DataOptions
-		var dataOptions = config["DataOptions"];
-		if (dataOptions != null)
-		{
-			builder.Configuration["DataOptions:client"] = dataOptions["client"]?.ToString() ?? "false";
-			builder.Configuration["DataOptions:server"] = dataOptions["server"]?.ToString() ?? "true";
-
-			var serverDetails = dataOptions["serverDetails"];
-			if (serverDetails != null)
-			{
-				builder.Configuration["DataOptions:serverDetails:host"] = serverDetails["host"]?.ToString() ?? "127.0.0.1";
-				builder.Configuration["DataOptions:serverDetails:port"] = serverDetails["port"]?.ToString() ?? "6254";
-			}
-
-			var clientDetails = dataOptions["clientDetails"];
-			if (clientDetails != null)
-			{
-				builder.Configuration["DataOptions:clientDetails:host"] = clientDetails["host"]?.ToString() ?? "127.0.0.1";
-				builder.Configuration["DataOptions:clientDetails:port"] = clientDetails["port"]?.ToString() ?? "5001";
-			}
-		}
 
 		// Настройка шины сообщений  
 		await ConfigureMessageBus(config, builder, bus);
 
 		// Красивое логирование конфигурации
 		LogDetailedConfiguration(companyName, host, portHttp, portHttps, enableValidation, database, bus,
-			cleanupIntervalSeconds, outboxMessageTtlSeconds, incidentEntitiesTtlMonths, protocol, dataFormat, config);
+				cleanupIntervalSeconds, outboxMessageTtlSeconds, incidentEntitiesTtlMonths, protocol, dataFormat, applicationType, config);
+
 
 		// ports here were hardcoded:
 		var httpUrl = $"http://{host}:{portHttp}";
@@ -165,12 +221,6 @@ public static class GateConfiguration
 			"kafkastreams" => "KafkaStreamsSettings",
 			_ => throw new InvalidOperationException($"Bus '{bus}' не поддерживается")
 		};
-	}
-
-	private static (string QueueIn, string QueueOut) GenerateQueueNames(string companyName)
-	{
-		var normalized = companyName.Trim().ToLowerInvariant();
-		return ($"{normalized}_in", $"{normalized}_out");
 	}
 
 	private static void ValidateBasicConfiguration(JObject config)
@@ -261,23 +311,13 @@ public static class GateConfiguration
 		if (config["PostgresDbSettings"] != null)
 		{
 			ConfigurePostgreSQL(config, builder);
-			var timestamp1 = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-			Console.WriteLine($"[{timestamp1}] [CONFIG] PostgreSQL база данных настроена");
 		}
 
 		// Настраиваем MongoDB, если настройки есть в конфигурации
 		if (config["MongoDbSettings"] != null)
 		{
 			ConfigureMongoDB(config, builder);
-			var timestamp2 = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-			Console.WriteLine($"[{timestamp2}] [CONFIG] MongoDB база данных настроена");
 		}
-
-		// Логируем, какая база выбрана как основная
-		var timestamp3 = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-		Console.ForegroundColor = ConsoleColor.Yellow;
-		Console.WriteLine($"[{timestamp3}] [CONFIG] Активная база данных: {database.ToUpper()}");
-		Console.ResetColor();
 
 		// Проверяем, что основная база настроена
 		switch (database.ToLower())
@@ -307,25 +347,14 @@ public static class GateConfiguration
 			builder.Configuration["PostgresDbSettings:Password"] = password;
 			builder.Configuration["PostgresDbSettings:Database"] = database;
 
-			// Отладочное логирование (БЕЗ пароля в логах!)
-			var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-			Console.WriteLine($"[{timestamp}] [DEBUG] PostgreSQL настройки:");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - Host: {host}");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - Port: {port}");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - Username: {username}");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - Database: {database}");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - Password: {(string.IsNullOrEmpty(password) ? "ПУСТОЙ" : "УСТАНОВЛЕН")}");
-
 			// Проверяем итоговую строку подключения
 			if (!string.IsNullOrEmpty(password))
 			{
 				var testConnectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database}";
-				Console.WriteLine($"[{timestamp}] [DEBUG] - Connection String сформирован успешно (длина: {testConnectionString.Length})");
 			}
 			else
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine($"[{timestamp}] [ERROR] - ПАРОЛЬ НЕ НАЙДЕН В КОНФИГУРАЦИИ!");
 				Console.ResetColor();
 			}
 		}
@@ -363,14 +392,6 @@ public static class GateConfiguration
 				builder.Configuration["MongoDbSettings:Collections:OutboxCollection"] = collections["OutboxCollection"]?.ToString() ?? "OutboxMessages";
 				builder.Configuration["MongoDbSettings:Collections:IncidentCollection"] = collections["IncidentCollection"]?.ToString() ?? "IncidentEntities";
 			}
-
-			// Отладочная информация (БЕЗ пароля в логах!)
-			var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-			Console.WriteLine($"[{timestamp}] [DEBUG] MongoDB настройки:");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - ConnectionString: {(string.IsNullOrEmpty(connectionString) ? "ПУСТАЯ" : "УСТАНОВЛЕНА")}");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - DatabaseName: {databaseName}");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - User: {user ?? "НЕ УСТАНОВЛЕН"}");
-			Console.WriteLine($"[{timestamp}] [DEBUG] - Password: {(string.IsNullOrEmpty(password) ? "НЕ УСТАНОВЛЕН" : "УСТАНОВЛЕН")}");
 		}
 		else
 		{
@@ -419,16 +440,10 @@ public static class GateConfiguration
 	{
 		var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
 
-		Console.WriteLine($"[{timestamp}] [CONFIG] Настройка шин сообщений...");
-		Console.WriteLine($"[{timestamp}] [CONFIG] Основная шина: {bus.ToUpper()}");
-
-		// ВСЕГДА копируем настройки ВСЕХ шин (для возможности runtime переключения)
-
 		// 1. RabbitMQ
 		if (config["RabbitMqSettings"] != null)
 		{
 			ConfigureRabbitMQ(config, builder);
-			Console.WriteLine($"[{timestamp}] [CONFIG] RabbitMQ настройки скопированы");
 		}
 		else
 		{
@@ -439,7 +454,6 @@ public static class GateConfiguration
 		if (config["ActiveMqSettings"] != null)
 		{
 			ConfigureActiveMQ(config, builder);
-			Console.WriteLine($"[{timestamp}] [CONFIG] ActiveMQ настройки скопированы");
 		}
 		else
 		{
@@ -450,7 +464,6 @@ public static class GateConfiguration
 		if (config["PulsarSettings"] != null)
 		{
 			ConfigurePulsar(config, builder);
-			Console.WriteLine($"[{timestamp}] [CONFIG] Pulsar настройки скопированы");
 		}
 		else
 		{
@@ -461,7 +474,6 @@ public static class GateConfiguration
 		if (config["TarantoolSettings"] != null)
 		{
 			ConfigureTarantool(config, builder);
-			Console.WriteLine($"[{timestamp}] [CONFIG] Tarantool настройки скопированы");
 		}
 		else
 		{
@@ -472,40 +484,18 @@ public static class GateConfiguration
 		if (config["KafkaStreamsSettings"] != null)
 		{
 			ConfigureKafkaStreams(config, builder);
-			Console.WriteLine($"[{timestamp}] [CONFIG] KafkaStreams настройки скопированы");
 		}
 		else
 		{
 			Console.WriteLine($"[{timestamp}] [CONFIG] KafkaStreamsSettings отсутствуют в конфигурации");
 		}
 
-		// Логируем какая шина является основной
-		switch (bus.ToLower())
-		{
-			case "rabbit":
-				Console.WriteLine($"[{timestamp}] [CONFIG] RabbitMQ установлен как ОСНОВНАЯ шина");
-				break;
-			case "activemq":
-				Console.WriteLine($"[{timestamp}] [CONFIG] ActiveMQ установлен как ОСНОВНАЯ шина");
-				break;
-			case "pulsar":
-				Console.WriteLine($"[{timestamp}] [CONFIG] Pulsar установлен как ОСНОВНАЯ шина");
-				break;
-			case "tarantool":
-				Console.WriteLine($"[{timestamp}] [CONFIG] Tarantool установлен как ОСНОВНАЯ шина");
-				break;
-			case "kafkastreams":
-				Console.WriteLine($"[{timestamp}] [CONFIG] KafkaStreams установлен как ОСНОВНАЯ шина");
-				break;
-		}
-
-		Console.WriteLine($"[{timestamp}] [CONFIG] Все шины доступны для runtime переключения");
-
 		return Task.CompletedTask;
 	}
 
 	private static void ConfigureRabbitMQ(JObject config, WebApplicationBuilder builder)
 	{
+
 		var rabbitSettings = config["RabbitMqSettings"];
 		if (rabbitSettings != null)
 		{
@@ -516,8 +506,8 @@ public static class GateConfiguration
 			builder.Configuration["RabbitMqSettings:UserName"] = rabbitSettings["UserName"]?.ToString() ?? "guest";
 			builder.Configuration["RabbitMqSettings:Password"] = rabbitSettings["Password"]?.ToString() ?? "guest";
 			builder.Configuration["RabbitMqSettings:VirtualHost"] = rabbitSettings["VirtualHost"]?.ToString() ?? "/";
-			builder.Configuration["RabbitMqSettings:PushQueueName"] = rabbitSettings["PushQueueName"]?.ToString() ?? "";
-			builder.Configuration["RabbitMqSettings:ListenQueueName"] = rabbitSettings["ListenQueueName"]?.ToString() ?? "";
+			builder.Configuration["RabbitMqSettings:InputChannel"] = _inPushChannel;
+			builder.Configuration["RabbitMqSettings:OutputChannel"] = _outPullChannel;
 			builder.Configuration["RabbitMqSettings:Heartbeat"] = rabbitSettings["Heartbeat"]?.ToString() ?? "60";
 		}
 	}
@@ -530,8 +520,8 @@ public static class GateConfiguration
 			builder.Configuration["ActiveMqSettings:InstanceNetworkGateId"] = activeMqSettings["InstanceNetworkGateId"]?.ToString() ?? "";
 			builder.Configuration["ActiveMqSettings:TypeToRun"] = activeMqSettings["TypeToRun"]?.ToString() ?? "ActiveMQ";
 			builder.Configuration["ActiveMqSettings:BrokerUri"] = activeMqSettings["BrokerUri"]?.ToString() ?? "";
-			builder.Configuration["ActiveMqSettings:PushQueueName"] = activeMqSettings["PushQueueName"]?.ToString() ?? "";
-			builder.Configuration["ActiveMqSettings:ListenQueueName"] = activeMqSettings["ListenQueueName"]?.ToString() ?? "";
+			builder.Configuration["ActiveMqSettings:InputChannel"] = _inPushChannel;
+			builder.Configuration["ActiveMqSettings:OutputChannel"] = _outPullChannel;
 		}
 	}
 
@@ -548,8 +538,6 @@ public static class GateConfiguration
 			builder.Configuration["PulsarSettings:ServiceUrl"] = pulsarSettings["ServiceUrl"]?.ToString() ?? "pulsar://localhost:6650";
 			builder.Configuration["PulsarSettings:Tenant"] = pulsarSettings["Tenant"]?.ToString() ?? "public";
 			builder.Configuration["PulsarSettings:Namespace"] = pulsarSettings["Namespace"]?.ToString() ?? "default";
-			builder.Configuration["PulsarSettings:InputTopic"] = pulsarSettings["InputTopic"]?.ToString() ?? "";
-			builder.Configuration["PulsarSettings:OutputTopic"] = pulsarSettings["OutputTopic"]?.ToString() ?? "";
 			builder.Configuration["PulsarSettings:SubscriptionName"] = pulsarSettings["SubscriptionName"]?.ToString() ?? "default-subscription";
 			builder.Configuration["PulsarSettings:SubscriptionType"] = pulsarSettings["SubscriptionType"]?.ToString() ?? "Exclusive";
 			builder.Configuration["PulsarSettings:ConnectionTimeoutSeconds"] = pulsarSettings["ConnectionTimeoutSeconds"]?.ToString() ?? "15";
@@ -559,6 +547,8 @@ public static class GateConfiguration
 			builder.Configuration["PulsarSettings:CompressionType"] = pulsarSettings["CompressionType"]?.ToString() ?? "LZ4";
 			builder.Configuration["PulsarSettings:BatchSize"] = pulsarSettings["BatchSize"]?.ToString() ?? "1000";
 			builder.Configuration["PulsarSettings:BatchingMaxPublishDelayMs"] = pulsarSettings["BatchingMaxPublishDelayMs"]?.ToString() ?? "10";
+			builder.Configuration["PulsarSettings:InputChannel"] = _inPushChannel;
+			builder.Configuration["PulsarSettings:OutputChannel"] = _outPullChannel;
 		}
 	}
 
@@ -576,9 +566,9 @@ public static class GateConfiguration
 			builder.Configuration["TarantoolSettings:Port"] = tarantoolSettings["Port"]?.ToString() ?? "3301";
 			builder.Configuration["TarantoolSettings:Username"] = tarantoolSettings["Username"]?.ToString() ?? "";
 			builder.Configuration["TarantoolSettings:Password"] = tarantoolSettings["Password"]?.ToString() ?? "";
-			builder.Configuration["TarantoolSettings:InputSpace"] = tarantoolSettings["InputSpace"]?.ToString() ?? "messages_in";
-			builder.Configuration["TarantoolSettings:OutputSpace"] = tarantoolSettings["OutputSpace"]?.ToString() ?? "messages_out";
 			builder.Configuration["TarantoolSettings:StreamName"] = tarantoolSettings["StreamName"]?.ToString() ?? "default-stream";
+			builder.Configuration["TarantoolSettings:InputChannel"] = _inPushChannel;
+			builder.Configuration["TarantoolSettings:OutputChannel"] = _outPullChannel;
 		}
 	}
 
@@ -595,28 +585,23 @@ public static class GateConfiguration
 			builder.Configuration["KafkaStreamsSettings:BootstrapServers"] = kafkaStreamsSettings["BootstrapServers"]?.ToString() ?? "localhost:9092";
 			builder.Configuration["KafkaStreamsSettings:ApplicationId"] = kafkaStreamsSettings["ApplicationId"]?.ToString() ?? "gateway-app";
 			builder.Configuration["KafkaStreamsSettings:ClientId"] = kafkaStreamsSettings["ClientId"]?.ToString() ?? "gateway-client";
-			builder.Configuration["KafkaStreamsSettings:InputTopic"] = kafkaStreamsSettings["InputTopic"]?.ToString() ?? "messages_in";
-			builder.Configuration["KafkaStreamsSettings:OutputTopic"] = kafkaStreamsSettings["OutputTopic"]?.ToString() ?? "messages_out";
 			builder.Configuration["KafkaStreamsSettings:GroupId"] = kafkaStreamsSettings["GroupId"]?.ToString() ?? "gateway-group";
 			builder.Configuration["KafkaStreamsSettings:AutoOffsetReset"] = kafkaStreamsSettings["AutoOffsetReset"]?.ToString() ?? "earliest";
 			builder.Configuration["KafkaStreamsSettings:EnableAutoCommit"] = kafkaStreamsSettings["EnableAutoCommit"]?.ToString() ?? "true";
 			builder.Configuration["KafkaStreamsSettings:SessionTimeoutMs"] = kafkaStreamsSettings["SessionTimeoutMs"]?.ToString() ?? "30000";
 			builder.Configuration["KafkaStreamsSettings:SecurityProtocol"] = kafkaStreamsSettings["SecurityProtocol"]?.ToString() ?? "PLAINTEXT";
+			builder.Configuration["KafkaStreamsSettings:InputChannel"] = _inPushChannel;
+			builder.Configuration["KafkaStreamsSettings:OutputChannel"] = _outPullChannel;
 		}
 	}
 
 	private static void LogDetailedConfiguration(string companyName, string host, int portHttp, int portHttps, bool enableValidation,
-		string database, string bus, int cleanupIntervalSeconds, int outboxMessageTtlSeconds, int incidentEntitiesTtlMonths,
-		string protocol, string dataFormat, JObject config)
+	string database, string bus, int cleanupIntervalSeconds, int outboxMessageTtlSeconds, int incidentEntitiesTtlMonths,
+	string protocol, string dataFormat, string applicationType, JObject config)
 	{
 		var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
 
-		// Используем цвета для выделения важной информации
 		Console.ForegroundColor = ConsoleColor.Cyan;
-		Console.WriteLine();
-		Console.WriteLine("═══════════════════════════════════════════════════════════════");
-		Console.WriteLine("                    КОНФИГУРАЦИЯ ШЛЮЗА                        ");
-		Console.WriteLine("═══════════════════════════════════════════════════════════════");
 		Console.ResetColor();
 
 		Console.ForegroundColor = ConsoleColor.Gray;
@@ -624,26 +609,29 @@ public static class GateConfiguration
 		Console.ResetColor();
 
 		Console.ForegroundColor = ConsoleColor.White;
-		Console.WriteLine($"Компания:              {companyName}");
+		Console.WriteLine($"Локация инстанса:      {companyName}");
 		Console.WriteLine($"Хост http:             {host}:{portHttp}");
 		Console.WriteLine($"Хост https:            {host}:{portHttps}");
 		Console.ResetColor();
 
-		Console.ForegroundColor = ConsoleColor.Yellow;
-		Console.WriteLine($"База данных:           {database.ToUpper()}");
-		Console.WriteLine($"Шина сообщений:        {bus.ToUpper()}");
+		//Добавляем отображение типа приложения
+		Console.ForegroundColor = ConsoleColor.Magenta;
+		Console.WriteLine($"Тип приложения:        {applicationType.ToUpper()}");
 		Console.ResetColor();
 
 		Console.ForegroundColor = ConsoleColor.Green;
 		Console.WriteLine($"Валидация:             {(enableValidation ? "Включена" : "Отключена")}");
 		Console.ResetColor();
 
-		Console.ForegroundColor = ConsoleColor.Magenta;
+		Console.ForegroundColor = ConsoleColor.Gray;
 		Console.WriteLine($"Интервал очистки:      {cleanupIntervalSeconds} сек");
 		Console.WriteLine($"TTL outbox сообщений:  {outboxMessageTtlSeconds} сек");
 		Console.WriteLine($"TTL инцидентов:        {incidentEntitiesTtlMonths} мес");
 		Console.ResetColor();
 
+		Console.ForegroundColor = ConsoleColor.Yellow;
+		Console.WriteLine($"Формат данных:         {dataFormat.ToUpper()}");
+		Console.ResetColor();
 		// Подробности базы данных
 		if (database.Equals("postgres", StringComparison.CurrentCultureIgnoreCase))
 		{
@@ -675,6 +663,7 @@ public static class GateConfiguration
 		var dataOptions = config["DataOptions"];
 		if (dataOptions != null)
 		{
+			Console.WriteLine($"Протокол:              {protocol.ToUpper()}");
 			Console.ForegroundColor = ConsoleColor.DarkCyan;
 			Console.WriteLine($"Server режим:          {dataOptions["server"]} ({dataOptions["serverDetails"]?["host"]}:{dataOptions["serverDetails"]?["port"]})");
 			Console.WriteLine($"Client режим:          {dataOptions["client"]} ({dataOptions["clientDetails"]?["host"]}:{dataOptions["clientDetails"]?["port"]})");
@@ -682,31 +671,11 @@ public static class GateConfiguration
 		}
 		// Подробности шины сообщений
 		LogBusDetails(bus, config);
-		Console.ForegroundColor = ConsoleColor.Yellow;
-		Console.WriteLine($"База данных:           {database.ToUpper()}");
-		Console.WriteLine($"Шина сообщений:        {bus.ToUpper()}");
-		Console.WriteLine($"Протокол:              {protocol.ToUpper()}");
-		Console.WriteLine($"Формат данных:         {dataFormat.ToUpper()}");
-		Console.ResetColor();
+
 		Console.ForegroundColor = ConsoleColor.Cyan;
-		Console.WriteLine("═══════════════════════════════════════════════════════════════");
+		Console.WriteLine();
 		Console.ResetColor();
 		Console.WriteLine();
-
-		// Дополнительная основная информация о настройках с цветом
-		Console.ForegroundColor = ConsoleColor.Green;
-		Console.WriteLine($"[{timestamp}] [INFO] Конфигурация динамического шлюза загружена:");
-		Console.ResetColor();
-
-		Console.WriteLine($"[{timestamp}] [INFO] - Company: {companyName}");
-		Console.WriteLine($"[{timestamp}] [INFO] - Host http: {host}:{portHttp}");
-		Console.WriteLine($"[{timestamp}] [INFO] - Host https: {host}:{portHttps}");
-		Console.WriteLine($"[{timestamp}] [INFO] - Database: {database}");
-		Console.WriteLine($"[{timestamp}] [INFO] - Bus: {bus}");
-		Console.WriteLine($"[{timestamp}] [INFO] - Validation: {enableValidation}");
-		Console.WriteLine($"[{timestamp}] [INFO] - Cleanup Interval: {cleanupIntervalSeconds} seconds");
-		Console.WriteLine($"[{timestamp}] [INFO] - Outbox TTL: {outboxMessageTtlSeconds} seconds");
-		Console.WriteLine($"[{timestamp}] [INFO] - Incidents TTL: {incidentEntitiesTtlMonths} months\n");
 	}
 
 	/// <summary>
@@ -723,9 +692,9 @@ public static class GateConfiguration
 				if (rabbitSettings != null)
 				{
 					Console.WriteLine($"RabbitMQ:              {rabbitSettings["HostName"]}:{rabbitSettings["Port"]}");
-					Console.WriteLine($"Push -> Listen:        {rabbitSettings["PushQueueName"]} -> {rabbitSettings["ListenQueueName"]}");
+					Console.WriteLine($"Push -> Listen:        {config["InputChannel"]} -> {config["OutputChannel"]}");
 					Console.WriteLine($"Virtual Host:          {rabbitSettings["VirtualHost"]}");
-					Console.WriteLine($"Gate ID:               {rabbitSettings["InstanceNetworkGateId"]}");
+					Console.WriteLine($"Gate rabbit ID :       {rabbitSettings["InstanceNetworkGateId"]}");
 				}
 				break;
 
@@ -734,8 +703,9 @@ public static class GateConfiguration
 				if (activeMqSettings != null)
 				{
 					Console.WriteLine($"ActiveMQ:              {activeMqSettings["BrokerUri"]}");
-					Console.WriteLine($"Push -> Listen:        {activeMqSettings["PushQueueName"]} -> {activeMqSettings["ListenQueueName"]}");
-					Console.WriteLine($"Gate ID:               {activeMqSettings["InstanceNetworkGateId"]}");
+					Console.WriteLine($"Push -> Listen:        {config["InputChannel"]} -> {config["OutputChannel"]}");
+					Console.WriteLine($"Gate activemq ID:      {activeMqSettings["InstanceNetworkGateId"]}");
+
 				}
 				break;
 
@@ -745,10 +715,10 @@ public static class GateConfiguration
 				{
 					Console.WriteLine($"Pulsar:                {pulsarSettings["ServiceUrl"]}");
 					Console.WriteLine($"Tenant/Namespace:      {pulsarSettings["Tenant"]}/{pulsarSettings["Namespace"]}");
-					Console.WriteLine($"Input -> Output:       {pulsarSettings["InputTopic"]} -> {pulsarSettings["OutputTopic"]}");
+					Console.WriteLine($"Push -> Listen:        {config["InputChannel"]} -> {config["OutputChannel"]}");
 					Console.WriteLine($"Subscription:          {pulsarSettings["SubscriptionName"]} ({pulsarSettings["SubscriptionType"]})");
 					Console.WriteLine($"Compression:           {pulsarSettings["EnableCompression"]} ({pulsarSettings["CompressionType"]})");
-					Console.WriteLine($"Gate ID:               {pulsarSettings["InstanceNetworkGateId"]}");
+					Console.WriteLine($"Gate pulsar ID:        {pulsarSettings["InstanceNetworkGateId"]}");
 				}
 				break;
 
@@ -757,9 +727,9 @@ public static class GateConfiguration
 				if (tarantoolSettings != null)
 				{
 					Console.WriteLine($"Tarantool:             {tarantoolSettings["Host"]}:{tarantoolSettings["Port"]}");
-					Console.WriteLine($"Input -> Output:       {tarantoolSettings["InputSpace"]} -> {tarantoolSettings["OutputSpace"]}");
+					Console.WriteLine($"Push -> Listen:        {config["InputChannel"]} -> {config["OutputChannel"]}");
 					Console.WriteLine($"Stream:                {tarantoolSettings["StreamName"]}");
-					Console.WriteLine($"Gate ID:               {tarantoolSettings["InstanceNetworkGateId"]}");
+					Console.WriteLine($"Gate tarantool ID:     {tarantoolSettings["InstanceNetworkGateId"]}");
 				}
 				break;
 
@@ -770,10 +740,10 @@ public static class GateConfiguration
 					Console.ForegroundColor = ConsoleColor.DarkGreen;
 					Console.WriteLine($"Kafka Streams:         {kafkaStreamsSettings["BootstrapServers"]}");
 					Console.WriteLine($"Application ID:        {kafkaStreamsSettings["ApplicationId"]}");
-					Console.WriteLine($"Input -> Output:       {kafkaStreamsSettings["InputTopic"]} -> {kafkaStreamsSettings["OutputTopic"]}");
+					Console.WriteLine($"Push -> Listen:        {config["InputChannel"]} -> {config["OutputChannel"]}");
 					Console.WriteLine($"Group ID:              {kafkaStreamsSettings["GroupId"]}");
 					Console.WriteLine($"Security:              {kafkaStreamsSettings["SecurityProtocol"]}");
-					Console.WriteLine($"Gate ID:               {kafkaStreamsSettings["InstanceNetworkGateId"]}");
+					Console.WriteLine($"Gate kafkastreams ID:  {kafkaStreamsSettings["InstanceNetworkGateId"]}");
 				}
 				break;
 
@@ -819,12 +789,6 @@ public static class GateConfiguration
 				fullPath = Path.GetFullPath(Path.Combine(basePath, configFilePath));
 			}
 
-			// Печатаем информацию для отладки.
-			Console.WriteLine();
-			Console.WriteLine($"[{timestamp}] [INFO] Конечный путь к конфигу: {fullPath}");
-			Console.WriteLine($"[{timestamp}] [INFO] Загружается конфигурация: {Path.GetFileName(fullPath)}");
-			Console.WriteLine();
-
 			// Проверка существования файла.
 			if (!File.Exists(fullPath))
 				throw new FileNotFoundException("Файл конфигурации не найден", fullPath);
@@ -833,8 +797,6 @@ public static class GateConfiguration
 			var json = File.ReadAllText(fullPath);
 			var parsedConfig = JObject.Parse(json);
 
-			var endTimestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-			Console.WriteLine($"[{endTimestamp}] [INFO] Конфигурация успешно загружена из {Path.GetFileName(fullPath)}");
 			return parsedConfig;
 		}
 		catch (Exception ex)

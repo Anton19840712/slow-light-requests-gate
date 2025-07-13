@@ -206,7 +206,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 
 			try
 			{
-				// Используем InputSpace из конфигурации
+				// Используем InputChannel из конфигурации
 				_logger?.LogDebug("Publishing message with key to Tarantool space: {SpaceName}, Key: {Key}", _inputSpace, key);
 
 				await _semaphore.WaitAsync();
@@ -243,7 +243,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 
 			try
 			{
-				// Используем OutputSpace из конфигурации для прослушивания ответов
+				// Используем OutputChannel из конфигурации для прослушивания ответов
 				_logger?.LogInformation("Starting Tarantool listener for space: {SpaceName} (configured as OutputSpace)", _outputSpace);
 
 				await _semaphore.WaitAsync();

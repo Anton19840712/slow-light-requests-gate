@@ -11,16 +11,13 @@ namespace lazy_light_requests_gate.infrastructure.data.initialization
 			switch (selectedDatabase)
 			{
 				case "postgres":
-					Console.WriteLine($"[{timestamp}] [INIT] Инициализация PostgreSQL...");
 					await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(configuration);
 					await PostgresDbConfiguration.DiagnoseDatabaseAsync(configuration);
 					Console.WriteLine($"[{timestamp}] [INIT] PostgreSQL инициализирован успешно");
 					break;
 
 				case "mongo":
-					Console.WriteLine($"[{timestamp}] [INIT] Инициализация MongoDB...");
 					// TODO: Добавить инициализацию MongoDB если потребуется
-					Console.WriteLine($"[{timestamp}] [INIT] MongoDB готов к работе");
 					break;
 
 				default:

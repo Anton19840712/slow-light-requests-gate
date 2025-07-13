@@ -1,4 +1,6 @@
-﻿using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+﻿using application.interfaces.services;
+using infrastructure.messaging;
+using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
 using lazy_light_requests_gate.core.application.services.messageprocessing;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
@@ -10,23 +12,12 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 		/// </summary>
 		public static IServiceCollection AddMessageServingServices(this IServiceCollection services, IConfiguration configuration)
 		{
-			var database = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
-			var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрация MessageProcessing сервисов для Database='{database}'");
-
-			// Регистрируем фабрику (всегда нужна)
 			services.AddScoped<IMessageProcessingServiceFactory, MessageProcessingServiceFactory>();
-
-			// УСЛОВНАЯ регистрация сервисов в зависимости от выбранной базы данных
-
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется MessageProcessingPostgresService");
 			services.AddTransient<MessageProcessingPostgresService>();
-			services.AddTransient<IMessageProcessingService, MessageProcessingPostgresService>();
-			
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется MessageProcessingMongoService");
 			services.AddTransient<MessageProcessingMongoService>();
-			services.AddTransient<IMessageProcessingService, MessageProcessingMongoService>();
+
+			services.AddScoped<ConnectionMessageSenderFactory>();
+			services.AddScoped<IMessageSender, MessageSender>();
 
 			return services;
 		}

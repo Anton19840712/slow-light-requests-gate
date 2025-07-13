@@ -1,40 +1,41 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
 using application.interfaces.networking;
-using application.interfaces.services;
+using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+using lazy_light_requests_gate.core.application.services.messageprocessing;
 
 namespace infrastructure.networking
 {
 	public class WebSocketNetworkClient : INetworkClient
 	{
 		private readonly ILogger<WebSocketNetworkClient> _logger;
-		private readonly IMessageProcessingService _messageProcessingService;
+		private readonly IMessageProcessingServiceFactory _messageProcessingServiceFactory;
 		private readonly string _host;
 		private readonly int _port;
 		private readonly string _outQueue;
 		private readonly string _inQueue;
 		private CancellationTokenSource _cts;
 		private Task _clientTask;
-
+		private readonly string _protocol;
 		private const int MaxDelayMilliseconds = 60000;
 
 		public WebSocketNetworkClient(
 			ILogger<WebSocketNetworkClient> logger,
-			IMessageProcessingService messageProcessingService,
+			IMessageProcessingServiceFactory messageProcessingServiceFactory,
 			IConfiguration configuration)
 		{
 			_logger = logger;
-			_messageProcessingService = messageProcessingService;
+			_messageProcessingServiceFactory = messageProcessingServiceFactory;
 
 			_host = configuration["host"] ?? "localhost";
 			_port = int.TryParse(configuration["port"], out var p) ? p : 5018;
 
-			var companyName = configuration["CompanyName"] ?? "default";
-			_outQueue = companyName + "_out";
-			_inQueue = companyName + "_in";
+			_inQueue = configuration["InputChannel"] ?? "default-input-channel";
+			_outQueue = configuration["OutputChannel"] ?? "default-output-channel";
+			_protocol = configuration["ProtocolWsValue"];
 		}
 
-		public string Protocol => "ws";// должен быть match с передаваемым через json параметром.
+		public string Protocol => _protocol;
 		public bool IsRunning => _cts != null && !_cts.IsCancellationRequested;
 
 		public Task StartAsync(CancellationToken cancellationToken)
@@ -100,14 +101,16 @@ namespace infrastructure.networking
 							await client.SendAsync(new ArraySegment<byte>(pongBytes), WebSocketMessageType.Text, true, token);
 							_logger.LogInformation("[WS Client] Отправлено сообщение: {Message}", pong);
 						}
+						var messageProcessingService = _messageProcessingServiceFactory
+							.CreateMessageProcessingService(_messageProcessingServiceFactory.GetCurrentDatabaseType());
 
-						await _messageProcessingService.ProcessIncomingMessageAsync(
+						await messageProcessingService.ProcessForSaveIncomingMessageAsync(
 							message: fullMessage,
-							instanceModelQueueOutName: _outQueue,
-							instanceModelQueueInName: _inQueue,
+							channelOut: _outQueue,
+							channelIn: _inQueue,
 							host: _host,
 							port: _port,
-							protocol: "ws");
+							protocol: _protocol);
 					}
 				}
 				catch (OperationCanceledException)

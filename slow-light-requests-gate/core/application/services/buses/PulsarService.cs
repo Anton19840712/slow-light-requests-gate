@@ -88,7 +88,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 
 			try
 			{
-				// Используем InputTopic из конфигурации
+				// Используем InputChannel из конфигурации
 				_logger?.LogDebug("Publishing message to Pulsar topic: {TopicName} (configured as OutputTopic)", _inputTopic);
 
 				await _semaphore.WaitAsync();
@@ -127,7 +127,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 
 			try
 			{
-				// Используем OutputTopic из конфигурации
+				// Используем OutputChannel из конфигурации
 				_logger?.LogDebug("Publishing message with key to Pulsar topic: {TopicName}, Key: {Key}", _inputTopic, key);
 
 				await _semaphore.WaitAsync();
@@ -168,7 +168,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 
 			try
 			{
-				// Используем InputTopic из конфигурации
+				// Используем InputChannel из конфигурации
 				_logger?.LogInformation("Starting Pulsar listener for topic: {TopicName} (configured as InputTopic)", _inputTopic);
 
 				var fullTopicName = $"persistent://{_tenant}/{_namespace}/{_inputTopic}";

@@ -16,7 +16,7 @@ namespace lazy_light_requests_gate.core.application.services.messageprocessing
 			}
 		}
 
-		public IMessageProcessingService CreateMessageProcessingService(string databaseType)
+		public MessageProcessingServiceBase CreateMessageProcessingService(string databaseType)
 		{
 			var dbType = databaseType?.ToLower() ?? _currentDatabaseType;
 

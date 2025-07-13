@@ -12,12 +12,6 @@ namespace lazy_light_requests_gate.core.domain.settings.buses
 
 		public string ClientId { get; set; } = "";
 
-		[Required]
-		public string InputTopic { get; set; } = "";
-
-		[Required]
-		public string OutputTopic { get; set; } = "";
-
 		public string GroupId { get; set; } = "";
 
 		public string AutoOffsetReset { get; set; } = "earliest";

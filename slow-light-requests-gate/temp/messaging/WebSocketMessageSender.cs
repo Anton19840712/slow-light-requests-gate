@@ -1,6 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
-using application.interfaces.messaging;
+using lazy_light_requests_gate.core.application.interfaces.listeners;
 
 namespace infrastructure.messaging
 {

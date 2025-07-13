@@ -1,7 +1,7 @@
 ﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
-using application.interfaces.messaging;
+using lazy_light_requests_gate.core.application.interfaces.listeners;
 
 namespace infrastructure.messaging
 {

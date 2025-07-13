@@ -4,7 +4,7 @@ using lazy_light_requests_gate.core.application.interfaces.listeners;
 
 namespace lazy_light_requests_gate.core.application.services.listeners
 {
-	public class RabbitMqQueueListener : IRabbitMqQueueListener<RabbitMqQueueListener>
+	public class RabbitMqQueueListener : IRabbitMqQueueListener
 	{
 		private readonly ILogger<RabbitMqQueueListener> _logger;
 		private readonly IConnection _connection;
@@ -81,6 +81,7 @@ namespace lazy_light_requests_gate.core.application.services.listeners
 			return Task.CompletedTask;
 		}
 
+		// тут уже идет почему-то tomsk_out
 		private void CreateQueue(string queueName)
 		{
 			if (_channel == null || !_channel.IsOpen)

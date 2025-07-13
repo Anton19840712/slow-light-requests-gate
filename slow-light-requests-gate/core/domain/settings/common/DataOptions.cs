@@ -1,20 +1,15 @@
-﻿using System.Text.Json.Serialization;
-using lazy_light_requests_gate.temp.models;
+﻿using lazy_light_requests_gate.presentation.enums;
 
 namespace lazy_light_requests_gate.core.domain.settings.common
 {
-	public record class DataOptions
+	/// <summary>
+	/// Настройки для режимов работы клиент/сервер
+	/// </summary>
+	public class DataOptions
 	{
-		[JsonPropertyName("client")]
-		public bool IsClient { get; set; }
-
-		[JsonPropertyName("server")]
-		public bool IsServer { get; set; }
-
-		[JsonPropertyName("serverDetails")]
-		public ConnectionEndpoint ServerDetails { get; set; }
-
-		[JsonPropertyName("clientDetails")]
-		public ConnectionEndpoint ClientDetails { get; set; }
+		public bool Client { get; set; } = false;
+		public bool Server { get; set; } = true;
+		public ServerDetails ServerDetails { get; set; } = new();
+		public ClientDetails ClientDetails { get; set; } = new();
 	}
 }

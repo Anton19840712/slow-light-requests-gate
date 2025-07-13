@@ -5,6 +5,7 @@ using lazy_light_requests_gate.core.application.services.buses;
 using lazy_light_requests_gate.core.application.services.databases;
 using lazy_light_requests_gate.core.application.services.messageprocessing;
 using lazy_light_requests_gate.infrastructure.configuration;
+using lazy_light_requests_gate.temp.apptypeswitcher;
 using Microsoft.OpenApi.Models;
 
 namespace lazy_light_requests_gate.core.application.configuration;
@@ -16,8 +17,12 @@ public class ServiceRegistrar
 		var configuration = builder.Configuration;
 		var services = builder.Services;
 
+		// Регистрируем ApplicationTypeService
+		services.AddSingleton<IApplicationTypeService, ApplicationTypeService>();
+
 		var selectedDatabase = configuration["Database"]?.ToLower();
 		var selectedBus = configuration["Bus"]?.ToLower();
+		var applicationType = configuration["ApplicationType"]?.ToLowerInvariant() ?? "restonly";
 
 		LogConfigurationInfo(selectedDatabase, selectedBus);
 
@@ -27,13 +32,14 @@ public class ServiceRegistrar
 		RegisterMessageBusServices(services, configuration, selectedBus);
 		RegisterHostedServices(services, configuration, selectedDatabase);
 		RegisterApplicationServices(services);
-
-		Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Регистрация сервисов завершена");
+		RegisterNetworkServices(services);
+		RegisterApplicationServices(services);
 	}
 
 	private void RegisterBaseServices(IServiceCollection services, string instanceId)
 	{
 		services.AddSingleton(instanceId);
+		services.AddSingleton<IApplicationTypeService, ApplicationTypeService>();
 
 		// ВАЖНО: Правильная регистрация контроллеров
 		services.AddControllers()
@@ -62,8 +68,6 @@ public class ServiceRegistrar
 				Description = "Введите JWT токен"
 			});
 		});
-
-		Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Swagger зарегистрирован успешно");
 	}
 
 	private void RegisterCommonServices(IServiceCollection services, IConfiguration configuration)
@@ -72,7 +76,6 @@ public class ServiceRegistrar
 		{
 			services.AddHttpServices();
 			services.AddHeadersServices();
-			Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Общие сервисы зарегистрированы");
 		}
 		catch (Exception ex)
 		{
@@ -85,17 +88,12 @@ public class ServiceRegistrar
 	{
 		try
 		{
-			Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Регистрируется MongoDB");
 			services.AddMongoDbServices(configuration);
 			services.AddMessageServingServices(configuration);
-
-			Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Регистрируется PostgreSQL");
 			services.AddPostgresDbServices(configuration);
 			services.AddPostgresDbRepositoriesServices(configuration);
 			services.AddMessageServingServices(configuration);
-
 			services.AddSingleton<IDynamicDatabaseManager, DynamicDatabaseManager>();
-			Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Сервисы баз данных зарегистрированы");
 		}
 		catch (Exception ex)
 		{
@@ -110,7 +108,6 @@ public class ServiceRegistrar
 		{
 			var busRegistrar = new MessageBusRegistrar();
 			busRegistrar.RegisterBusService(services, configuration, selectedBus);
-			Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Сервисы шины сообщений зарегистрированы");
 		}
 		catch (Exception ex)
 		{
@@ -126,13 +123,11 @@ public class ServiceRegistrar
 			if (selectedDatabase == "postgres" || selectedDatabase == "mongo")
 			{
 				services.AddHostedServices(configuration);
-				Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Hosted сервисы зарегистрированы");
 			}
 		}
 		catch (Exception ex)
 		{
 			Console.WriteLine($"[{GetTimestamp()}] [ERROR] Ошибка регистрации hosted сервисов: {ex.Message}");
-			// НЕ бросаем исключение, hosted сервисы не критичны для Swagger
 		}
 	}
 
@@ -140,11 +135,10 @@ public class ServiceRegistrar
 	{
 		try
 		{
-			services.AddScoped<IMessageProcessingServiceFactory, MessageProcessingServiceFactory>();
+			services.AddSingleton<IMessageProcessingServiceFactory, MessageProcessingServiceFactory>();
 			services.AddSingleton<IMessageBusServiceFactory, MessageBusServiceFactory>();
 			services.AddAuthentication();
 			services.AddAuthorization();
-			Console.WriteLine($"[{GetTimestamp()}] [CONFIG] Сервисы приложения зарегистрированы");
 		}
 		catch (Exception ex)
 		{
@@ -153,10 +147,22 @@ public class ServiceRegistrar
 		}
 	}
 
+	private void RegisterNetworkServices(IServiceCollection services)
+	{
+		try
+		{
+			services.AddNetworkServices();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"[{GetTimestamp()}] [ERROR] Ошибка регистрации сервисов network: {ex.Message}");
+			throw;
+		}
+	}
+
 	private void LogConfigurationInfo(string selectedDatabase, string selectedBus)
 	{
 		var timestamp = GetTimestamp();
-		Console.WriteLine($"[{timestamp}] [CONFIG] Регистрация сервисов для Database='{selectedDatabase}', Bus='{selectedBus}'");
 	}
 
 	private string GetTimestamp() => DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");

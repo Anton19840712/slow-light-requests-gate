@@ -2,6 +2,7 @@
 using lazy_light_requests_gate.core.application.interfaces.buses;
 using lazy_light_requests_gate.presentation.models.common;
 using lazy_light_requests_gate.presentation.models.request;
+using lazy_light_requests_gate.temp.apptypeswitcher;
 using Microsoft.AspNetCore.Mvc;
 
 namespace lazy_light_requests_gate.presentation.controllers
@@ -31,6 +32,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 		/// Переключение между типами шин сообщений
 		/// </summary>
 		[HttpPost("switch")]
+		[RequireEitherAPIRuntime]
 		public async Task<IActionResult> SwitchBus([FromBody] BusSwitchRequest request)
 		{
 			try
@@ -88,6 +90,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 		/// Получение текущей шины сообщений
 		/// </summary>
 		[HttpGet("current")]
+		[RequireEitherAPIRuntime]
 		public async Task<IActionResult> GetCurrentBus()
 		{
 			try
@@ -117,6 +120,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 		/// Динамическое переподключение к шине с новыми параметрами
 		/// </summary>
 		[HttpPost("reconnect")]
+		[RequireEitherAPIRuntime]
 		public async Task<IActionResult> ReconnectWithNewParameters([FromBody] BusReconnectRequest request)
 		{
 			try
@@ -157,6 +161,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 		/// Получение информации о текущем подключении
 		/// </summary>
 		[HttpGet("connection-info")]
+		[RequireEitherAPIRuntime]
 		public async Task<IActionResult> GetConnectionInfo()
 		{
 			try
@@ -179,6 +184,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 		/// Получение списка поддерживаемых шин сообщений
 		/// </summary>
 		[HttpGet("supported")]
+		[RequireEitherAPIRuntime]
 		public IActionResult GetSupportedBuses()
 		{
 			return Ok(new
@@ -193,6 +199,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 		/// Публикация тестового сообщения
 		/// </summary>
 		[HttpPost("publish-test")]
+		[RequireEitherAPIRuntime]
 		public async Task<IActionResult> PublishTestMessage([FromBody] TestMessageRequest request)
 		{
 			try

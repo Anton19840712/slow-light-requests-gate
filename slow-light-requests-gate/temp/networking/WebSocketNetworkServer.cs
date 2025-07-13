@@ -12,7 +12,8 @@ namespace infrastructure.networking
 		private readonly IServiceScopeFactory _scopeFactory;
 		private readonly string _host;
 		private readonly int _port;
-		private readonly string _outQueueName;
+		private readonly string _outQueue;
+		private readonly string _protocol;
 		private CancellationTokenSource _cts;
 		private Task _serverTask;
 		private WebSocketListener _listener;
@@ -27,10 +28,11 @@ namespace infrastructure.networking
 
 			_host = configuration["host"] ?? "localhost";
 			_port = int.TryParse(configuration["port"], out var p) ? p : 5000;
-			_outQueueName = (configuration["CompanyName"] ?? "defaultCompany") + "_out";
+			_outQueue = configuration["OutputChannel"] ?? "default-output-channel";
+			_protocol = configuration["ProtocolTcpValue"];
 		}
 
-		public string Protocol => "websocket";
+		public string Protocol => _protocol;
 		public bool IsRunning => _cts != null && !_cts.IsCancellationRequested;
 
 		public Task StartAsync(CancellationToken cancellationToken)
@@ -39,7 +41,7 @@ namespace infrastructure.networking
 
 			_cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-			_listener = new WebSocketListener(_host, _port, _scopeFactory, _logger, _outQueueName);
+			_listener = new WebSocketListener(_host, _port, _scopeFactory, _logger, _outQueue);
 			_serverTask = _listener.StartAsync(_cts.Token);
 
 			_logger.LogInformation("[WS] Сервер запущен на {Host}:{Port}", _host, _port);

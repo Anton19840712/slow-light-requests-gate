@@ -21,8 +21,7 @@ public class DynamicOutboxCleanupService : BackgroundService
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		_logger.LogInformation("=== DYNAMIC OUTBOX CLEANUP SERVICE STARTED ===");
-		_logger.LogInformation("Using smart database and message bus detection mode");
+		_logger.LogInformation("DYNAMIC OUTBOX CLEANUP SERVICE STARTED");
 
 		while (!stoppingToken.IsCancellationRequested)
 		{

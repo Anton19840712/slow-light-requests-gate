@@ -1,18 +1,20 @@
 ﻿using System.Net.Sockets;
 using System.Text;
 using application.interfaces.networking;
-using application.interfaces.services;
+using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+using lazy_light_requests_gate.core.application.services.messageprocessing;
 
 namespace infrastructure.networking
 {
 	public class UdpNetworkClient : INetworkClient
 	{
 		private readonly ILogger<UdpNetworkClient> _logger;
-		private readonly IMessageProcessingService _messageProcessingService;
+		private readonly IMessageProcessingServiceFactory _messageProcessingServiceFactory;
 		private readonly string _host;
 		private readonly int _port;
 		private readonly string _outQueue;
 		private readonly string _inQueue;
+		private readonly string _protocol;
 		private CancellationTokenSource _cts;
 		private Task _clientTask;
 		private int _attempt = 0;
@@ -21,21 +23,21 @@ namespace infrastructure.networking
 
 		public UdpNetworkClient(
 			ILogger<UdpNetworkClient> logger,
-			IMessageProcessingService messageProcessingService,
+			IMessageProcessingServiceFactory messageProcessingServiceFactory,
 			IConfiguration configuration)
 		{
 			_logger = logger;
-			_messageProcessingService = messageProcessingService;
+			_messageProcessingServiceFactory = messageProcessingServiceFactory;
 
 			_host = configuration["host"] ?? "localhost";
 			_port = int.TryParse(configuration["port"], out var p) ? p : 5019;
 
-			var companyName = configuration["CompanyName"] ?? "default";
-			_outQueue = companyName + "_out";
-			_inQueue = companyName + "_in";
+			_inQueue = configuration["InputChannel"] ?? "default-input-channel";
+			_outQueue = configuration["OutputChannel"] ?? "default-output-channel";
+			_protocol = configuration["ProtocolUdpValue"];
 		}
 
-		public string Protocol => "udp";
+		public string Protocol => _protocol;
 		public bool IsRunning => _cts != null && !_cts.IsCancellationRequested;
 
 		public Task StartAsync(CancellationToken cancellationToken)
@@ -76,13 +78,16 @@ namespace infrastructure.networking
 						await udpClient.SendAsync(replyBytes, replyBytes.Length);
 						_logger.LogInformation("[UDP Client] Отправлен ответ серверу: {Message}", replyMessage);
 
-						await _messageProcessingService.ProcessIncomingMessageAsync(
+						var messageProcessingService = _messageProcessingServiceFactory
+							.CreateMessageProcessingService(_messageProcessingServiceFactory.GetCurrentDatabaseType());
+
+						await messageProcessingService.ProcessForSaveIncomingMessageAsync(
 							message: message,
-							instanceModelQueueOutName: _outQueue,
-							instanceModelQueueInName: _inQueue,
+							channelOut: _outQueue,
+							channelIn: _inQueue,
 							host: _host,
 							port: _port,
-							protocol: "udp");
+							protocol: _protocol);
 					}
 				}
 				catch (OperationCanceledException)

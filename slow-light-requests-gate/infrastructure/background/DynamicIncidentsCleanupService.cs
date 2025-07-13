@@ -20,8 +20,7 @@ namespace lazy_light_requests_gate.infrastructure.background
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
-			_logger.LogInformation("=== DYNAMIC INCIDENT CLEANUP SERVICE STARTED ===");
-			_logger.LogInformation("Using smart database detection mode for incident cleanup");
+			_logger.LogInformation("DYNAMIC INCIDENT CLEANUP SERVICE STARTED");
 
 			while (!stoppingToken.IsCancellationRequested)
 			{

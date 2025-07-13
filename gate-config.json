@@ -1,16 +1,18 @@
 {
-  "Type": "rest",
+  "Type": "streamonly",  // ✅ restonly, streamonly, both
   "CompanyName": "Tomsk",
+  "InputChannel": "channel_in",
+  "OutputChannel": "channel_out",
   "Host": "127.0.0.1",
   "PortHttp": 80,
   "PortHttps": 443,
   "Validate": true,
-  "Database": "mongo",
-  "Bus": "rabbit",
+  "Database": "mongo",// ✅ mongo, postgres
+  "Bus": "rabbit",// ✅ rabbit, kafkastreams, pulsar, activemq, tarantool
   "CleanupIntervalSeconds": 5,
   "OutboxMessageTtlSeconds": 10,
   "IncidentEntitiesTtlMonths": 60,
-  "Protocol": "TCP",
+  "Protocol": "tcp",
   "DataFormat": "json",
   "DataOptions": {
     "client": false,
@@ -29,74 +31,65 @@
     "Port": 5432,
     "Username": "postgres",
     "Password": "mysecret",
-    "Database": "GatewayDB"
+    "Database": "GatewayDB1"
   },
- "MongoDbSettings": {
-    "ConnectionString": "mongodb://root:secret123@localhost:27018",
+  "MongoDbSettings": {
+    "ConnectionString": "mongodb://root1:pass1@localhost:27017",
     "DatabaseName": "GatewayDB",
-    "User": "root",
-    "Password": "secret123",
+    "User": "root1",
+    "Password": "pass1",
     "Collections": {
       "OutboxCollection": "OutboxMessages",
       "IncidentCollection": "IncidentEntities"
     }
   },
-	"RabbitMqSettings": {
-	  "InstanceNetworkGateId": "gate-rmq-002",
-	  "TypeToRun": "RabbitMQ",
-	  "HostName": "localhost",
-	  "Port": 5673,
-	  "UserName": "admin",
-	  "Password": "secret123",
-	  "VirtualHost": "/",
-	  "PushQueueName": "rmq2_push",
-	  "ListenQueueName": "rmq2_listen",
-	  "Heartbeat": "60"
-	}
-  ,
+  "RabbitMqSettings": {
+    "InstanceNetworkGateId": "gate-rmq-001",
+    "TypeToRun": "RabbitMQ",
+    "HostName": "localhost",
+    "Port": 5672,
+    "UserName": "user1",
+    "Password": "pass1",
+    "VirtualHost": "/",
+    "Heartbeat": "60"
+  },
   "ActiveMqSettings": {
-    "InstanceNetworkGateId": "gate-tomsk-001",
+    "InstanceNetworkGateId": "gate-activemq-001",
     "TypeToRun": "ActiveMQ",
     "BrokerUri": "tcp://localhost:61616",
-    "PushQueueName": "tomsk_in",
-    "ListenQueueName": "tomsk_out"
   },
-	"PulsarSettings": {
-		"InstanceNetworkGateId": "gate-tomsk-001",
-		"TypeToRun": "Pulsar",
-		"ServiceUrl": "pulsar://localhost:6650",
-		"Tenant": "termidesk",
-		"Namespace": "tomsk",
-		"InputTopic": "tomsk_in",
-		"OutputTopic": "tomsk_out",
-		"SubscriptionName": "tomsk-gateway-subscription",
-		"SubscriptionType": "Exclusive",
-		"ConnectionTimeoutSeconds": 15,
-		"MaxReconnectAttempts": 3,
-		"ReconnectIntervalSeconds": 5,
-		"EnableCompression": true,
-		"CompressionType": "LZ4",
-		"BatchSize": 1000,
-		"BatchingMaxPublishDelayMs": 10
-	  },
+  "PulsarSettings": {
+    "InstanceNetworkGateId": "gate-pulsar-001",
+    "TypeToRun": "Pulsar",
+    "ServiceUrl": "pulsar://localhost:6650",
+    "Tenant": "public",
+    "Namespace": "default",
+    "SubscriptionName": "pulsar1-gateway-subscription",
+    "SubscriptionType": "Exclusive",
+    "ConnectionTimeoutSeconds": 15,
+    "MaxReconnectAttempts": 3,
+    "ReconnectIntervalSeconds": 5,
+    "EnableCompression": true,
+    "CompressionType": "LZ4",
+    "BatchSize": 1000,
+    "BatchingMaxPublishDelayMs": 10
+  },
   "TarantoolSettings": {
+    "InstanceNetworkGateId": "gate-tarantool-001",
+    "TypeToRun": "Tarantool",
     "Host": "localhost",
     "Port": "3301",
     "Username": "admin",
-    "Password": "admin",
-    "InputSpace": "tomsk_in",
-    "OutputSpace": "tomsk_out",
+    "Password": "admin1",
     "StreamName": "default-stream"
   },
   "KafkaStreamsSettings": {
-    "InstanceNetworkGateId": "gate-tomsk-001",
+    "InstanceNetworkGateId": "gate-kafka-001",
     "TypeToRun": "KafkaStreams",
     "BootstrapServers": "localhost:9092",
-    "ApplicationId": "tomsk-gateway-app",
-    "ClientId": "tomsk-gateway-client",
-    "InputTopic": "tomsk_in",
-    "OutputTopic": "tomsk_out",
-    "GroupId": "tomsk-gateway-group",
+    "ApplicationId": "kafka1-gateway-app",
+    "ClientId": "kafka1-gateway-client",
+    "GroupId": "kafka1-gateway-group",
     "AutoOffsetReset": "earliest",
     "EnableAutoCommit": true,
     "SessionTimeoutMs": 30000,

@@ -1,16 +1,18 @@
 ﻿using application.interfaces.networking;
-using application.interfaces.services;
+using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+using lazy_light_requests_gate.core.application.services.messageprocessing;
 using System.Net.Sockets;
 using System.Text;
 
 public class TcpNetworkClient : INetworkClient
 {
 	private readonly ILogger<TcpNetworkClient> _logger;
-	private readonly IMessageProcessingService _messageProcessingService;
+	private readonly IMessageProcessingServiceFactory _messageProcessingServiceFactory;
 	private readonly string _host;
 	private readonly int _port;
 	private readonly string _outQueue;
 	private readonly string _inQueue;
+	private readonly string _protocol;
 	private CancellationTokenSource _cts;
 	private Task _clientTask;
 
@@ -18,21 +20,21 @@ public class TcpNetworkClient : INetworkClient
 
 	public TcpNetworkClient(
 		ILogger<TcpNetworkClient> logger,
-		IMessageProcessingService messageProcessingService,
+		IMessageProcessingServiceFactory messageProcessingServiceFactory,
 		IConfiguration configuration)
 	{
 		_logger = logger;
-		_messageProcessingService = messageProcessingService;
+		_messageProcessingServiceFactory = messageProcessingServiceFactory;
 
 		_host = configuration["host"] ?? "localhost";
 		_port = int.TryParse(configuration["port"], out var p) ? p : 5019;
 
-		var companyName = configuration["CompanyName"] ?? "default";
-		_outQueue = companyName + "_out";
-		_inQueue = companyName + "_in";
+		_inQueue = configuration["InputChannel"] ?? "default-input-channel";
+		_outQueue = configuration["OutputChannel"] ?? "default-output-channel";
+		_protocol = configuration["ProtocolTcpValue"];
 	}
 
-	public string Protocol => "tcp";
+	public string Protocol => _protocol;
 	public bool IsRunning => _cts != null && !_cts.IsCancellationRequested;
 
 	public Task StartAsync(CancellationToken cancellationToken)
@@ -86,13 +88,16 @@ public class TcpNetworkClient : INetworkClient
 					_logger.LogInformation(""); // Пустая строка для визуального разделения
 					_logger.LogInformation("[TCP Client] Получено сообщение: {Message}", message);
 
-					await _messageProcessingService.ProcessIncomingMessageAsync(
+					var messageProcessingService = _messageProcessingServiceFactory
+						.CreateMessageProcessingService(_messageProcessingServiceFactory.GetCurrentDatabaseType());
+
+					await messageProcessingService.ProcessForSaveIncomingMessageAsync(
 						message: message,
-						instanceModelQueueOutName: _outQueue,
-						instanceModelQueueInName: _inQueue,
+						channelOut: _outQueue,
+						channelIn: _inQueue,
 						host: _host,
 						port: _port,
-						protocol: "tcp");
+						protocol: _protocol);
 				}
 
 			}

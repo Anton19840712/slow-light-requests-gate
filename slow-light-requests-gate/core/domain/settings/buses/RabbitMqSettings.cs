@@ -20,12 +20,6 @@ namespace lazy_light_requests_gate.core.domain.settings.buses
 
 		public string Heartbeat { get; set; }
 
-		[Required]
-		public string PushQueueName { get; set; }
-
-		[Required]
-		public string ListenQueueName { get; set; }
-
 		public Uri GetAmqpUri()
 		{
 			// Нормализуем VirtualHost - ВСЕГДА должен начинаться с /

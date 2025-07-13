@@ -1,6 +1,4 @@
-﻿using domain.enums;
-
-namespace lazy_light_requests_gate.temp.models
+﻿namespace lazy_light_requests_gate.temp.models
 {
     public class BusInformationDto
     {

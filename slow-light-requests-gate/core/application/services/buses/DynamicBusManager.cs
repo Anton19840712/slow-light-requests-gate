@@ -97,8 +97,8 @@ namespace lazy_light_requests_gate.core.application.services.buses
 					config["RabbitMqSettings:UserName"] = GetStringParameter(parameters, "UserName", "guest");
 					config["RabbitMqSettings:Password"] = GetStringParameter(parameters, "Password", "guest");
 					config["RabbitMqSettings:VirtualHost"] = GetStringParameter(parameters, "VirtualHost", "/");
-					config["RabbitMqSettings:PushQueueName"] = GetStringParameter(parameters, "PushQueueName", "");
-					config["RabbitMqSettings:ListenQueueName"] = GetStringParameter(parameters, "ListenQueueName", "");
+					config["RabbitMqSettings:InputChannel"] = GetStringParameter(parameters, "InputChannel", "");
+					config["RabbitMqSettings:OutputChannel"] = GetStringParameter(parameters, "OutputChannel", "");
 					config["RabbitMqSettings:Heartbeat"] = GetStringParameter(parameters, "Heartbeat", "60");
 					break;
 
@@ -106,8 +106,8 @@ namespace lazy_light_requests_gate.core.application.services.buses
 					config["ActiveMqSettings:InstanceNetworkGateId"] = GetStringParameter(parameters, "InstanceNetworkGateId", "");
 					config["ActiveMqSettings:TypeToRun"] = GetStringParameter(parameters, "TypeToRun", "ActiveMQ");
 					config["ActiveMqSettings:BrokerUri"] = GetStringParameter(parameters, "BrokerUri", "");
-					config["ActiveMqSettings:PushQueueName"] = GetStringParameter(parameters, "PushQueueName", "");
-					config["ActiveMqSettings:ListenQueueName"] = GetStringParameter(parameters, "ListenQueueName", "");
+					config["ActiveMqSettings:InputChannel"] = GetStringParameter(parameters, "InputChannel", "");
+					config["ActiveMqSettings:OutputChannel"] = GetStringParameter(parameters, "OutputChannel", "");
 					break;
 
 				case "pulsar":

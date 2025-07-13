@@ -104,6 +104,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 					_logger.LogDebug("Канал создан. Объявляем очередь {QueueName}...", queueName);
 
 					// Очередь теперь постоянная
+					// Происходит декларация очереди tomsk_out:
 					var queueDeclareResult = channel.QueueDeclare(
 						queue: queueName,
 						durable: true,
@@ -160,7 +161,14 @@ namespace lazy_light_requests_gate.core.application.services.buses
 			try
 			{
 				using var channel = PersistentConnection.CreateModel();
-				channel.QueueDeclare(queue: queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
+
+				// происходит декларация очереди с другим значением из конфигурации:
+				channel.QueueDeclare(
+						queue: queueName,
+						durable: false,
+						exclusive: false,
+						autoDelete: false,
+						arguments: null);
 
 				var consumer = new EventingBasicConsumer(channel);
 				var completionSource = new TaskCompletionSource<string>();
@@ -274,7 +282,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 					using var channel = connection.CreateModel();
 					_logger.LogDebug("Канал создан для теста");
 
-					// Создаем тестовую очередь
+					// Создаем тестовую очередь для публикации:
 					var testQueue = "test-connection-queue";
 					var queueDeclareResult = channel.QueueDeclare(
 						queue: testQueue,
@@ -285,7 +293,7 @@ namespace lazy_light_requests_gate.core.application.services.buses
 
 					_logger.LogDebug("Тестовая очередь {TestQueue} создана", testQueue);
 
-					// Отправляем тестовое сообщение
+					// Отправляем тестовое сообщение:
 					var testMessage = $"Test message at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
 					var body = Encoding.UTF8.GetBytes(testMessage);
 

@@ -14,20 +14,13 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 			{
 				var config = provider.GetRequiredService<IConfiguration>();
 
-				// Читаем АКТУАЛЬНУЮ конфигурацию (после GateConfiguration)
+				// Читаем АКТУАЛЬНУЮ конфигурацию полученую в классе GateConfiguration
 				var hostName = config["RabbitMqSettings:HostName"];
 				var port = int.TryParse(config["RabbitMqSettings:Port"], out var p) ? p : 5672;
 				var userName = config["RabbitMqSettings:UserName"];
 				var password = config["RabbitMqSettings:Password"];
 				var virtualHost = config["RabbitMqSettings:VirtualHost"];
-
-				Console.WriteLine("=== СОЗДАНИЕ RABBITMQ FACTORY ===");
-				Console.WriteLine($"Host: {hostName}");
-				Console.WriteLine($"Port: {port}");
-				Console.WriteLine($"User: {userName}");
-				Console.WriteLine($"VHost: '{virtualHost}'");
-				Console.WriteLine("================================");
-
+				
 				// Применяем дефолты только если значения пустые
 				hostName = string.IsNullOrWhiteSpace(hostName) ? "localhost" : hostName;
 				userName = string.IsNullOrWhiteSpace(userName) ? "guest" : userName;
@@ -59,7 +52,7 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 
 			// Остальные сервисы
 			services.AddSingleton<IRabbitMqBusService, RabbitMqBusService>();
-			services.AddSingleton<IRabbitMqQueueListener<RabbitMqQueueListener>, RabbitMqQueueListener>();
+			services.AddSingleton<IRabbitMqQueueListener, RabbitMqQueueListener>();
 
 			return services;
 		}

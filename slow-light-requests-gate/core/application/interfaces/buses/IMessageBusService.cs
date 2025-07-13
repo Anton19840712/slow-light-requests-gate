@@ -5,8 +5,8 @@
 	/// </summary>
 	public interface IMessageBusService
 	{
-		Task PublishMessageAsync(string queueName, string routingKey, string message);
-		Task StartListeningAsync(string queueName, CancellationToken cancellationToken);
+		Task PublishMessageAsync(string channelName, string routingKey, string message);
+		Task StartListeningAsync(string channelName, CancellationToken cancellationToken);
 		Task<bool> TestConnectionAsync();
 		string GetBusType();
 	}

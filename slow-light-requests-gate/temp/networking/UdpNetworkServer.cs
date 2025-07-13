@@ -12,7 +12,8 @@ namespace infrastructure.networking
 		private readonly IServiceScopeFactory _scopeFactory;
 		private readonly string _host;
 		private readonly int _port;
-		private readonly string _outQueueName;
+		private readonly string _outQueue;
+		private readonly string _protocol;
 		private CancellationTokenSource _cts;
 		private Task _serverTask;
 		private UdpClient _udpClient;
@@ -27,10 +28,11 @@ namespace infrastructure.networking
 
 			_host = configuration["host"] ?? "0.0.0.0";
 			_port = int.TryParse(configuration["port"], out var p) ? p : 5005;
-			_outQueueName = (configuration["CompanyName"] ?? "defaultCompany") + "_out";
+			_outQueue = configuration["OutputChannel"] ?? "default-output-channel";
+			_protocol = configuration["ProtocolTcpValue"];
 		}
 
-		public string Protocol => "udp";
+		public string Protocol => _protocol;
 		public bool IsRunning => _cts != null && !_cts.IsCancellationRequested;
 
 		public async Task StartAsync(CancellationToken cancellationToken)
@@ -112,7 +114,7 @@ namespace infrastructure.networking
 
 				await messageSender.SendMessagesToClientAsync(
 					connectionContext: context,
-					queueForListening: _outQueueName,
+					queueForListening: _outQueue,
 					cancellationToken: token);
 			}
 			catch (Exception ex)

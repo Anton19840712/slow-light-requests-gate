@@ -39,14 +39,7 @@ public static class PostgresDbConfiguration
 
 		// Получаем значения для отладки
 		var settings = postgresSection.Get<PostgresDbSettings>();
-
-		Console.WriteLine($"[{timestamp}] [DEBUG] PostgreSQL конфигурация:");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Host: '{settings?.Host ?? "NULL"}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Port: '{settings?.Port.ToString() ?? "NULL"}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Username: '{settings?.Username ?? "NULL"}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Password: '{(string.IsNullOrEmpty(settings?.Password) ? "NULL/EMPTY" : $"SET (length: {settings.Password.Length})")}'");
-		Console.WriteLine($"[{timestamp}] [DEBUG] - Database: '{settings?.Database ?? "NULL"}'");
-
+		
 		// Проверяем обязательные поля
 		if (string.IsNullOrEmpty(settings?.Host) || string.IsNullOrEmpty(settings?.Username) ||
 			string.IsNullOrEmpty(settings?.Password) || string.IsNullOrEmpty(settings?.Database))
@@ -57,7 +50,6 @@ public static class PostgresDbConfiguration
 		// Регистрируем репозитории PostgreSQL с динамическим клиентом
 		services.AddScoped(typeof(IPostgresRepository<>), typeof(PostgresRepository<>));
 
-		Console.WriteLine($"[{timestamp}] [SUCCESS] PostgreSQL динамические сервисы успешно зарегистрированы");
 		return services;
 	}
 

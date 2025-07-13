@@ -1,6 +1,6 @@
 ﻿namespace lazy_light_requests_gate.core.application.interfaces.listeners
 {
-	public interface IRabbitMqQueueListener<TListener> where TListener : class
+	public interface IRabbitMqQueueListener
 	{
 		Task StartListeningAsync(
 			string queueOutName,

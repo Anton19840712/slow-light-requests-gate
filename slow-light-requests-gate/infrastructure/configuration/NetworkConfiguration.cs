@@ -2,7 +2,7 @@
 using application.interfaces.networking;
 using infrastructure.networking;
 
-namespace infrastructure.configuration
+namespace lazy_light_requests_gate.infrastructure.configuration
 {
     public static class NetworkConfiguration 
     {

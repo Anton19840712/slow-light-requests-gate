@@ -203,8 +203,8 @@ public class MessageBusServiceFactory : IMessageBusServiceFactory
 				["KafkaStreamsSettings:BootstrapServers"] = settings.BootstrapServers,
 				["KafkaStreamsSettings:ApplicationId"] = settings.ApplicationId,
 				["KafkaStreamsSettings:ClientId"] = settings.ClientId,
-				["KafkaStreamsSettings:InputTopic"] = settings.InputTopic,
-				["KafkaStreamsSettings:OutputTopic"] = settings.OutputTopic,
+				["KafkaStreamsSettings:InputTopic"] = settings.InputChannel,
+				["KafkaStreamsSettings:OutputTopic"] = settings.OutputChannel,
 				["KafkaStreamsSettings:GroupId"] = settings.GroupId,
 				["KafkaStreamsSettings:AutoOffsetReset"] = settings.AutoOffsetReset,
 				["KafkaStreamsSettings:EnableAutoCommit"] = settings.EnableAutoCommit.ToString(),
@@ -228,8 +228,8 @@ public class MessageBusServiceFactory : IMessageBusServiceFactory
 				["PulsarSettings:ServiceUrl"] = settings.ServiceUrl,
 				["PulsarSettings:Tenant"] = settings.Tenant,
 				["PulsarSettings:Namespace"] = settings.Namespace,
-				["PulsarSettings:InputTopic"] = settings.InputTopic,
-				["PulsarSettings:OutputTopic"] = settings.OutputTopic,
+				["PulsarSettings:InputTopic"] = settings.InputChannel,
+				["PulsarSettings:OutputTopic"] = settings.OutputChannel,
 				["PulsarSettings:SubscriptionName"] = settings.SubscriptionName
 			})
 			.Build();

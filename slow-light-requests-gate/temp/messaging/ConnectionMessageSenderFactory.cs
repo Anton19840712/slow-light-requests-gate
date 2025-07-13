@@ -1,7 +1,7 @@
-﻿using application.interfaces.messaging;
-using application.interfaces.networking;
+﻿using application.interfaces.networking;
 using application.interfaces.services;
 using infrastructure.networking;
+using lazy_light_requests_gate.core.application.interfaces.listeners;
 
 namespace infrastructure.messaging
 {

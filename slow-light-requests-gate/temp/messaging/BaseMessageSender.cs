@@ -1,5 +1,5 @@
-﻿using application.interfaces.messaging;
-using application.interfaces.services;
+﻿using application.interfaces.services;
+using lazy_light_requests_gate.core.application.interfaces.listeners;
 
 namespace infrastructure.messaging
 {

@@ -13,7 +13,8 @@ namespace infrastructure.networking
 		private TcpListener _listener;
 		private readonly string _host;
 		private readonly int _port;
-		private readonly string _outQueueName;
+		private readonly string _outQueue;
+		private readonly string _protocol;
 		private readonly IServiceScopeFactory _scopeFactory;
 
 		public TcpNetworkServer(
@@ -26,10 +27,11 @@ namespace infrastructure.networking
 
 			_host = configuration?["host"]?.ToString() ?? "localhost";  // Значение по умолчанию
 			_port = int.TryParse(configuration?["port"]?.ToString(), out var p) ? p : 6254;  // Значение по умолчанию
-			_outQueueName = (configuration["CompanyName"] ?? "defaultCompany") + "_out";
+			_outQueue = configuration["OutputChannel"] ?? "default-output-channel";
+			_protocol = configuration["ProtocolTcpValue"];
 		}
 
-		public string Protocol => "tcp";
+		public string Protocol => _protocol;
 		public bool IsRunning => _cts != null && !_cts.IsCancellationRequested;
 
 		public async Task StartAsync(CancellationToken cancellationToken)
@@ -120,7 +122,7 @@ namespace infrastructure.networking
 
 				await messageSender.SendMessagesToClientAsync(
 					connectionContext: context,
-					queueForListening: _outQueueName,
+					queueForListening: _outQueue,
 					cancellationToken: token);
 			}
 			catch (Exception ex)

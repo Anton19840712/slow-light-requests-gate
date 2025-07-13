@@ -36,19 +36,12 @@ namespace lazy_light_requests_gate.core.application.configuration
 
 		private void RegisterRabbitMq(IServiceCollection services, IConfiguration configuration, string timestamp)
 		{
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется RabbitMQ");
-			Console.WriteLine("=== ДОБАВЛЯЕМ RABBITMQ СЕРВИСЫ ===");
-			Console.WriteLine($"RabbitMQ Host из конфигурации: {configuration["RabbitMqSettings:HostName"]}");
-			Console.WriteLine($"RabbitMQ Port из конфигурации: {configuration["RabbitMqSettings:Port"]}");
-			Console.WriteLine($"RabbitMQ User из конфигурации: {configuration["RabbitMqSettings:UserName"]}");
-			Console.WriteLine($"RabbitMQ VHost из конфигурации: {configuration["RabbitMqSettings:VirtualHost"]}");
-			Console.WriteLine("================================");
 			services.AddRabbitMqServices(configuration);
 		}
 
 		private void RegisterActiveMq(IServiceCollection services, IConfiguration configuration, string timestamp)
 		{
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется ActiveMQ");
+			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется в DI ActiveMQ");
 			services.AddSingleton<IActiveMqService>(sp =>
 			{
 				var serviceUrl = configuration["ActiveMqSettings:BrokerUri"] ?? "tcp://localhost:61616";
@@ -60,19 +53,19 @@ namespace lazy_light_requests_gate.core.application.configuration
 
 		private void RegisterKafka(IServiceCollection services, IConfiguration configuration, string timestamp)
 		{
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется Kafka");
+			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется в DI Kafka");
 			services.AddSingleton<IKafkaStreamsService, KafkaStreamsService>();
 		}
 
 		private void RegisterPulsar(IServiceCollection services, IConfiguration configuration, string timestamp)
 		{
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется Pulsar");
+			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется в DI Pulsar");
 			services.AddSingleton<IPulsarService, PulsarService>();
 		}
 
 		private void RegisterTarantool(IServiceCollection services, IConfiguration configuration, string timestamp)
 		{
-			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется Tarantool");
+			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется в DI Tarantool");
 			services.AddSingleton<ITarantoolService, TarantoolService>();
 		}
 	}

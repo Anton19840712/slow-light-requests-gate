@@ -24,18 +24,6 @@ namespace lazy_light_requests_gate.core.domain.settings.buses
 		public string Namespace { get; set; } = "default";
 
 		/// <summary>
-		/// Топик для входящих сообщений
-		/// </summary>
-		[Required]
-		public string InputTopic { get; set; } = "gateway-input";
-
-		/// <summary>
-		/// Топик для исходящих сообщений
-		/// </summary>
-		[Required]
-		public string OutputTopic { get; set; } = "gateway-output";
-
-		/// <summary>
 		/// Имя подписки для consumer
 		/// </summary>
 		[Required]
@@ -92,7 +80,7 @@ namespace lazy_light_requests_gate.core.domain.settings.buses
 		/// <returns>Полное имя топика в формате persistent://tenant/namespace/topic</returns>
 		public string GetFullInputTopicName()
 		{
-			return $"persistent://{Tenant}/{Namespace}/{InputTopic}";
+			return $"persistent://{Tenant}/{Namespace}/{InputChannel}";
 		}
 
 		/// <summary>
@@ -101,7 +89,7 @@ namespace lazy_light_requests_gate.core.domain.settings.buses
 		/// <returns>Полное имя топика в формате persistent://tenant/namespace/topic</returns>
 		public string GetFullOutputTopicName()
 		{
-			return $"persistent://{Tenant}/{Namespace}/{OutputTopic}";
+			return $"persistent://{Tenant}/{Namespace}/{OutputChannel}";
 		}
 
 		/// <summary>
@@ -138,10 +126,10 @@ namespace lazy_light_requests_gate.core.domain.settings.buses
 			if (string.IsNullOrWhiteSpace(Namespace))
 				return (false, "Namespace is required");
 
-			if (string.IsNullOrWhiteSpace(InputTopic))
+			if (string.IsNullOrWhiteSpace(InputChannel))
 				return (false, "InputTopic is required");
 
-			if (string.IsNullOrWhiteSpace(OutputTopic))
+			if (string.IsNullOrWhiteSpace(OutputChannel))
 				return (false, "OutputTopic is required");
 
 			if (string.IsNullOrWhiteSpace(SubscriptionName))

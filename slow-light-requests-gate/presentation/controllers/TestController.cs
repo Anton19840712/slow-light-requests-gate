@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using lazy_light_requests_gate.temp.apptypeswitcher;
+using Microsoft.AspNetCore.Mvc;
 
 namespace lazy_light_requests_gate.presentation.controllers;
 
@@ -23,22 +24,23 @@ public class TestController : ControllerBase
 		_instanceId = instanceId;
 	}
 
-	// Простой GET
+	// EITHER api:
 	[HttpGet("ping")]
+	[RequireEitherAPIRuntime]
 	public IActionResult Ping()
 	{
 		return Ok("pong");
 	}
 
-	// Простой POST
 	[HttpPost("echo")]
+	[RequireEitherAPIRuntime]
 	public IActionResult Echo([FromBody] object data)
 	{
 		return Ok(new { received = data });
 	}
 
-	// GET, который показывает адрес и среду окружения
 	[HttpGet("info")]
+	[RequireEitherAPIRuntime]
 	public IActionResult GetAppInfo()
 	{
 		var scheme = Request.Scheme;
@@ -53,6 +55,7 @@ public class TestController : ControllerBase
 	}
 
 	[HttpGet("instance")]
+	[RequireEitherAPIRuntime]
 	public IActionResult GetInstanceInfo()
 	{
 		var address = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
@@ -63,4 +66,32 @@ public class TestController : ControllerBase
 			Endpoint = address
 		});
 	}
+
+
+	// REST api:
+	[HttpGet("data")]
+	[RequireRestRuntime]
+	public IActionResult GetRestData() => Ok(new { type = "REST", data = "REST only data", timestamp = DateTime.UtcNow });
+
+	[HttpPost("process")]
+	[RequireRestRuntime]
+	public IActionResult ProcessRestData([FromBody] object data) => Ok(new { type = "REST", processed = data, timestamp = DateTime.UtcNow });
+
+	[HttpGet("status")]
+	[RequireRestRuntime]
+	public IActionResult GetRestStatus() => Ok(new { type = "REST", status = "active", mode = "RestOnly", timestamp = DateTime.UtcNow });
+
+	// STREAM api:
+	[HttpGet("stream")]
+	[RequireStreamRuntime]
+	public IActionResult GetStreamData() => Ok(new { type = "STREAM", data = "Stream only data", timestamp = DateTime.UtcNow });
+
+	[HttpPost("notify")]
+	[RequireStreamRuntime]
+	public IActionResult SendNotification([FromBody] object notification) => Ok(new { type = "STREAM", sent = notification, timestamp = DateTime.UtcNow });
+
+	[HttpGet("live")]
+	[RequireStreamRuntime]
+	public IActionResult GetLiveData() => Ok(new { type = "STREAM", live = true, mode = "StreamOnly", timestamp = DateTime.UtcNow });
+
 }

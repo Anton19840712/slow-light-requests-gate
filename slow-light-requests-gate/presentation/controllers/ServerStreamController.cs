@@ -1,7 +1,8 @@
 ﻿using infrastructure.networking;
+using lazy_light_requests_gate.temp.apptypeswitcher;
 using Microsoft.AspNetCore.Mvc;
 
-namespace lazy_light_requests_gate.temp.presentation.controllers
+namespace lazy_light_requests_gate.presentation.controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
@@ -15,6 +16,7 @@ namespace lazy_light_requests_gate.temp.presentation.controllers
 		}
 
 		[HttpPost("start/{protocol}")]
+		[RequireStreamRuntime]
 		public async Task<IActionResult> Start(string protocol)
 		{
 			try
@@ -29,6 +31,7 @@ namespace lazy_light_requests_gate.temp.presentation.controllers
 		}
 
 		[HttpPost("stop/{protocol}")]
+		[RequireStreamRuntime]
 		public async Task<IActionResult> Stop(string protocol)
 		{
 			try
@@ -43,6 +46,7 @@ namespace lazy_light_requests_gate.temp.presentation.controllers
 		}
 
 		[HttpGet("status")]
+		[RequireStreamRuntime]
 		public IActionResult Status()
 		{
 			var running = _manager.GetRunningServers();
