@@ -2,11 +2,11 @@
 using lazy_light_requests_gate.core.application.interfaces.databases;
 using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
 using lazy_light_requests_gate.core.application.interfaces.runtime;
-using lazy_light_requests_gate.core.application.services.buses;
-using lazy_light_requests_gate.core.application.services.databases;
-using lazy_light_requests_gate.core.application.services.messageprocessing;
-using lazy_light_requests_gate.core.application.services.runtime;
 using lazy_light_requests_gate.infrastructure.configuration;
+using lazy_light_requests_gate.infrastructure.services.buses;
+using lazy_light_requests_gate.infrastructure.services.databases;
+using lazy_light_requests_gate.infrastructure.services.messageprocessing;
+using lazy_light_requests_gate.infrastructure.services.runtime;
 using Microsoft.OpenApi.Models;
 
 namespace lazy_light_requests_gate.core.application.configuration;

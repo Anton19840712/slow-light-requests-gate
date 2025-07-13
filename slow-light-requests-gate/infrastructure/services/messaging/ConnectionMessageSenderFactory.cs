@@ -4,7 +4,7 @@ using lazy_light_requests_gate.core.application.interfaces.networking;
 using lazy_light_requests_gate.infrastructure.messaging;
 using lazy_light_requests_gate.infrastructure.networking;
 
-namespace lazy_light_requests_gate.core.application.services.messaging
+namespace lazy_light_requests_gate.infrastructure.services.messaging
 {
 	public class ConnectionMessageSenderFactory
 	{

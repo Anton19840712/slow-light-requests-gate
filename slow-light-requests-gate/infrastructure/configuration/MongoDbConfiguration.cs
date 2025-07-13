@@ -4,8 +4,8 @@ using MongoDB.Bson.Serialization;
 using lazy_light_requests_gate.core.application.interfaces.repos;
 using lazy_light_requests_gate.infrastructure.data.repos;
 using lazy_light_requests_gate.core.application.interfaces.databases;
-using lazy_light_requests_gate.core.application.services.databases;
 using lazy_light_requests_gate.core.domain.settings.databases;
+using lazy_light_requests_gate.infrastructure.services.databases;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {

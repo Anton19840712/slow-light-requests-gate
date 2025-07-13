@@ -1,4 +1,4 @@
-﻿using lazy_light_requests_gate.core.application.services.messageprocessing;
+﻿using lazy_light_requests_gate.infrastructure.services.messageprocessing;
 
 namespace lazy_light_requests_gate.core.application.interfaces.messageprocessing
 {

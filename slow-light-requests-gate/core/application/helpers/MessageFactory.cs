@@ -2,7 +2,7 @@
 using lazy_light_requests_gate.core.domain.entities;
 using lazy_light_requests_gate.presentation.enums;
 
-namespace lazy_light_requests_gate.core.application.services.common
+namespace lazy_light_requests_gate.core.application.helpers
 {
 	public static class MessageFactory
 	{

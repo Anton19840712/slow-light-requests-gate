@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.buses;
-using lazy_light_requests_gate.core.application.services.buses;
 using lazy_light_requests_gate.infrastructure.configuration;
+using lazy_light_requests_gate.infrastructure.services.buses;
 
 namespace lazy_light_requests_gate.core.application.configuration
 {

@@ -2,7 +2,7 @@
 using MongoDB.Driver;
 using System.Security.Authentication;
 
-namespace lazy_light_requests_gate.core.application.services.databases
+namespace lazy_light_requests_gate.infrastructure.services.databases
 {
 	public class DynamicMongoClient : IDynamicMongoClient
 	{

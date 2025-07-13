@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.messaging;
 using lazy_light_requests_gate.core.application.interfaces.networking;
-using lazy_light_requests_gate.core.application.services.messaging;
+using lazy_light_requests_gate.infrastructure.services.messaging;
 
 public class MessageSender : IMessageSender
 {

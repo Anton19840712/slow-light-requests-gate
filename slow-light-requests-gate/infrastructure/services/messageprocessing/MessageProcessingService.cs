@@ -1,18 +1,19 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.repos;
 using lazy_light_requests_gate.core.domain.entities;
 
-namespace lazy_light_requests_gate.core.application.services.messageprocessing
+namespace lazy_light_requests_gate.infrastructure.services.messageprocessing
 {
-	// Сервис обработки сообщений:
-	public class MessageProcessingPostgresService : MessageProcessingServiceBase
+	public class MessageProcessingService<TOutboxRepo, TIncidentRepo> : MessageProcessingServiceBase
+		where TOutboxRepo : IBaseRepository<OutboxMessage>
+		where TIncidentRepo : IBaseRepository<IncidentEntity>
 	{
-		private readonly IPostgresRepository<OutboxMessage> _outboxRepository;
-		private readonly IPostgresRepository<IncidentEntity> _incidentRepository;
+		private readonly TOutboxRepo _outboxRepository;
+		private readonly TIncidentRepo _incidentRepository;
 
-		public MessageProcessingPostgresService(
-			IPostgresRepository<OutboxMessage> outboxRepository,
-			IPostgresRepository<IncidentEntity> incidentRepository,
-			ILogger<MessageProcessingPostgresService> logger)
+		public MessageProcessingService(
+			TOutboxRepo outboxRepository,
+			TIncidentRepo incidentRepository,
+			ILogger<MessageProcessingService<TOutboxRepo, TIncidentRepo>> logger)
 			: base(logger)
 		{
 			_outboxRepository = outboxRepository ?? throw new ArgumentNullException(nameof(outboxRepository));

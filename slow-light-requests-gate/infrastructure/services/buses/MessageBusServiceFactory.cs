@@ -2,7 +2,7 @@
 using lazy_light_requests_gate.core.domain.settings.buses;
 using System.Collections.Concurrent;
 
-namespace lazy_light_requests_gate.core.application.services.buses;
+namespace lazy_light_requests_gate.infrastructure.services.buses;
 
 /// <summary>
 /// Фабрика для создания и управления сервисами шин сообщений

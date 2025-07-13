@@ -5,7 +5,7 @@ using Npgsql;
 using System.Data;
 using System.Text.Json;
 
-namespace lazy_light_requests_gate.core.application.services.databases
+namespace lazy_light_requests_gate.infrastructure.services.databases
 {
 	public class DynamicPostgresClient : IDynamicPostgresClient
 	{

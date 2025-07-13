@@ -3,7 +3,7 @@ using lazy_light_requests_gate.core.application.interfaces.buses;
 using Streamiz.Kafka.Net;
 using Streamiz.Kafka.Net.SerDes;
 
-namespace lazy_light_requests_gate.core.application.services.buses
+namespace lazy_light_requests_gate.infrastructure.services.buses
 {
 	/// <summary>
 	/// Сервис для работы с Kafka Streams - следует паттерну других сервисов

@@ -4,7 +4,7 @@ using DotPulsar.Extensions;
 using System.Buffers;
 using lazy_light_requests_gate.core.application.interfaces.buses;
 
-namespace lazy_light_requests_gate.core.application.services.buses
+namespace lazy_light_requests_gate.infrastructure.services.buses
 {
 	/// <summary>
 	/// Сервис для работы с Apache Pulsar

@@ -1,7 +1,7 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
 using lazy_light_requests_gate.core.application.interfaces.listeners;
-using lazy_light_requests_gate.core.application.services.messaging;
+using lazy_light_requests_gate.infrastructure.services.messaging;
 
 namespace lazy_light_requests_gate.infrastructure.messaging
 {

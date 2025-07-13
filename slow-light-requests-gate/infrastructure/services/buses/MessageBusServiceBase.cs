@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.buses;
 
-namespace lazy_light_requests_gate.core.application.services.buses
+namespace lazy_light_requests_gate.infrastructure.services.buses
 {
 	/// <summary>
 	/// Базовый класс для всех сервисов шин сообщений

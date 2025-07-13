@@ -1,7 +1,7 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.listeners;
 using lazy_light_requests_gate.core.application.interfaces.messaging;
 
-namespace lazy_light_requests_gate.core.application.services.messaging
+namespace lazy_light_requests_gate.infrastructure.services.messaging
 {
 	public abstract class BaseMessageSender<T> : IConnectionMessageSender
 	{

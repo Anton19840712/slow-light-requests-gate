@@ -4,7 +4,7 @@ using ProGaudi.Tarantool.Client.Model;
 using ProGaudi.Tarantool.Client.Model.Enums;
 using System.Text.Json;
 
-namespace lazy_light_requests_gate.core.application.services.buses
+namespace lazy_light_requests_gate.infrastructure.services.buses
 {
 	/// <summary>
 	/// Сервис для работы с Tarantool

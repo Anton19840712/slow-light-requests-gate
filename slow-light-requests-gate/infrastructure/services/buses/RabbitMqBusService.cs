@@ -3,7 +3,7 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System.Text;
 
-namespace lazy_light_requests_gate.core.application.services.buses
+namespace lazy_light_requests_gate.infrastructure.services.buses
 {
 	public class RabbitMqBusService : IRabbitMqBusService, IDisposable
 	{

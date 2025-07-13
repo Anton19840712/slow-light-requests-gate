@@ -2,7 +2,7 @@
 using RabbitMQ.Client;
 using lazy_light_requests_gate.core.application.interfaces.listeners;
 
-namespace lazy_light_requests_gate.core.application.services.listeners
+namespace lazy_light_requests_gate.infrastructure.services.listeners
 {
 	public class RabbitMqQueueListener : IRabbitMqQueueListener
 	{

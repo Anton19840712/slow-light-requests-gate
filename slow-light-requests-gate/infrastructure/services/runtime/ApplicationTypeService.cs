@@ -2,7 +2,7 @@
 using lazy_light_requests_gate.core.domain.events;
 using lazy_light_requests_gate.presentation.enums;
 
-namespace lazy_light_requests_gate.core.application.services.runtime
+namespace lazy_light_requests_gate.infrastructure.services.runtime
 {
 	public class ApplicationTypeService : IApplicationTypeService
 	{

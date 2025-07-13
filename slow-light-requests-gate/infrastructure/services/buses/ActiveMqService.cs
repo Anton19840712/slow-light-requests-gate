@@ -1,7 +1,7 @@
 ﻿using Apache.NMS;
 using lazy_light_requests_gate.core.application.interfaces.buses;
 
-namespace lazy_light_requests_gate.core.application.services.buses
+namespace lazy_light_requests_gate.infrastructure.services.buses
 {
 	/// <summary>
 	/// Исправленный ActiveMQ сервис с правильным транспортом

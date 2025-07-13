@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.listeners;
-using lazy_light_requests_gate.core.application.services.buses;
-using lazy_light_requests_gate.core.application.services.listeners;
+using lazy_light_requests_gate.infrastructure.services.buses;
+using lazy_light_requests_gate.infrastructure.services.listeners;
 using RabbitMQ.Client;
 using Serilog;
 

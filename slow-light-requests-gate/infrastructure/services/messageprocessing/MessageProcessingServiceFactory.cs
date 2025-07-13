@@ -1,6 +1,6 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
 
-namespace lazy_light_requests_gate.core.application.services.messageprocessing
+namespace lazy_light_requests_gate.infrastructure.services.messageprocessing
 {
 	public class MessageProcessingServiceFactory : IMessageProcessingServiceFactory
 	{

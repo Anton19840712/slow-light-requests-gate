@@ -1,7 +1,7 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.repos;
 using lazy_light_requests_gate.core.domain.entities;
 
-namespace lazy_light_requests_gate.core.application.services.messageprocessing
+namespace lazy_light_requests_gate.infrastructure.services.messageprocessing
 {
 	// Сервис обработки сообщений:
 	public class MessageProcessingMongoService : MessageProcessingServiceBase

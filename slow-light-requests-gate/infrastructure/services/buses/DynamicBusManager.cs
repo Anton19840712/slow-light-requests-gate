@@ -1,7 +1,7 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.buses;
 using System.Collections.Concurrent;
 
-namespace lazy_light_requests_gate.core.application.services.buses
+namespace lazy_light_requests_gate.infrastructure.services.buses
 {
 	/// <summary>
 	/// Упрощенный менеджер для динамического управления шинами сообщений
