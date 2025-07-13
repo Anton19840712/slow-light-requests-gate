@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace lazy_light_requests_gate.presentation.controllers.common
+namespace lazy_light_requests_gate.presentation.controllers
 {
 	/// <summary>
 	/// Базовый контроллер с общей логикой для всех Gateway API контроллеров
@@ -63,7 +63,7 @@ namespace lazy_light_requests_gate.presentation.controllers.common
 				{
 					error = ex.Message,
 					operation = operationName,
-					context = context
+					context
 				}
 			);
 		}
@@ -83,15 +83,15 @@ namespace lazy_light_requests_gate.presentation.controllers.common
 		{
 			return SuccessResponse(new
 			{
-				data = data,
-				metadata = metadata
+				data,
+				metadata
 			}, message);
 		}
 
 		/// <summary>
 		/// Валидация запроса с возвращением ошибки при провале
 		/// </summary>
-		protected IActionResult? ValidateRequest(params (bool condition, string errorMessage)[] validations)
+		protected IActionResult ValidateRequest(params (bool condition, string errorMessage)[] validations)
 		{
 			foreach (var (condition, errorMessage) in validations)
 			{

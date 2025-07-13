@@ -1,4 +1,4 @@
-﻿using lazy_light_requests_gate.temp.models;
+﻿using lazy_light_requests_gate.presentation.models.response;
 
 namespace lazy_light_requests_gate.core.application.interfaces.headers
 {

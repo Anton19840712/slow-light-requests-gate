@@ -1,5 +1,5 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.headers;
-using lazy_light_requests_gate.core.application.services.validators;
+using lazy_light_requests_gate.core.domain.validators;
 
 namespace lazy_light_requests_gate.infrastructure.configuration
 {
