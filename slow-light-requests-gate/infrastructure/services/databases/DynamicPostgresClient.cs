@@ -31,6 +31,8 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 
 		public string GetConnectionString() => _connectionString;
 
+
+		// сколько раз ты используешь этот метод?
 		public async Task ReconnectAsync(Dictionary<string, object> parameters)
 		{
 			await _semaphore.WaitAsync();
@@ -38,22 +40,15 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			{
 				_logger.LogInformation("Reconnecting PostgreSQL client with new parameters");
 
-				var host = parameters.GetValueOrDefault("Host", "localhost")?.ToString();
+				var username = _configuration["PostgresDbSettings:Username"] ?? "postgres";
+				var databaseName = _configuration["PostgresDbSettings:Database"] ?? "GatewayDB";
+				var password = _configuration["PostgresDbSettings:Password"];
+				var host = _configuration["PostgresDbSettings:Host"];
 
-				// по идее ты уже это сделал, когда менял конфигурацию для постгрес.
-				var portValue = parameters.GetValueOrDefault("Port", 5432);
 				int port;
-				if (portValue is JsonElement jsonElement)
-				{
-					port = jsonElement.GetInt32();
-				}
-				else
-				{
-					port = Convert.ToInt32(portValue);
-				}
-				var username = parameters.GetValueOrDefault("Username", "postgres")?.ToString();
-				var password = parameters.GetValueOrDefault("Password", "")?.ToString();
-				var database = parameters.GetValueOrDefault("Database", "postgres")?.ToString();
+				var portValue = _configuration["PostgresDbSettings:Port"];
+
+				port = Convert.ToInt32(portValue);
 
 				var connectionStringBuilder = new NpgsqlConnectionStringBuilder
 				{
@@ -61,7 +56,7 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 					Port = port,
 					Username = username,
 					Password = password,
-					Database = database
+					Database = databaseName
 				};
 
 				var newConnectionString = connectionStringBuilder.ToString();
@@ -74,7 +69,7 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 				// Заменяем на новое
 				_connectionString = newConnectionString;
 
-				_logger.LogInformation("PostgreSQL client reconnected successfully to: {Database}", database);
+				_logger.LogInformation("PostgreSQL client reconnected successfully to: {Database}", databaseName);
 			}
 			finally
 			{

@@ -63,7 +63,7 @@ public static class PostgresDbConfiguration
 
 		try
 		{
-			// Получаем настройки напрямую из конфигурации
+			// Получаем обновленные настройки напрямую из изначальной конфигурации
 			var postgresSection = configuration.GetSection("PostgresDbSettings");
 			var settings = postgresSection.Get<PostgresDbSettings>();
 
@@ -72,14 +72,13 @@ public static class PostgresDbConfiguration
 				throw new InvalidOperationException("Не удалось получить настройки PostgreSQL из конфигурации");
 			}
 
-			// Дополнительная проверка настроек
+			// Дополнительная проверка настроек:
 			Console.WriteLine($"[{timestamp}] [DEBUG] Проверка настроек для инициализации:");
 			Console.WriteLine($"[{timestamp}] [DEBUG] - Host: '{settings.Host ?? "NULL"}'");
 			Console.WriteLine($"[{timestamp}] [DEBUG] - Database: '{settings.Database ?? "NULL"}'");
 			Console.WriteLine($"[{timestamp}] [DEBUG] - Username: '{settings.Username ?? "NULL"}'");
 			Console.WriteLine($"[{timestamp}] [DEBUG] - Password: '{(string.IsNullOrEmpty(settings.Password) ? "НЕ УСТАНОВЛЕН" : $"УСТАНОВЛЕН (длина: {settings.Password.Length})")}'");
 
-			// ИСПРАВЛЕНИЕ: Сначала создаем базу данных, а потом уже подключаемся к ней
 			await CreateDataBaseAndTablesAsync(configuration);
 
 			Console.WriteLine($"[{timestamp}] [SUCCESS] Инициализация PostgreSQL завершена успешно");

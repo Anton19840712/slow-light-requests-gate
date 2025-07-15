@@ -2,9 +2,7 @@
 {
     public class BusInformationDto
     {
-        //public string Key { get; set; }
 		public string InstanceId { get; set; }
-		//public string ConnectionId { get; set; }
 		public string TypeToRun { get; set; }
 	}
 

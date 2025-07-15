@@ -9,10 +9,9 @@ namespace lazy_light_requests_gate.presentation.controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	public class MessageBusSwitchController : ControllerBase
+	public class MessageBusSwitchController : BaseGatewayController
 	{
 		private readonly IMessageBusServiceFactory _messageBusServiceFactory;
-		private readonly ILogger<MessageBusSwitchController> _logger;
 		private readonly IDynamicBusManager _busManager;
 		private readonly IConfiguration _configuration;
 
@@ -20,12 +19,11 @@ namespace lazy_light_requests_gate.presentation.controllers
 			IMessageBusServiceFactory messageBusServiceFactory,
 			IDynamicBusManager busManager,
 			IConfiguration configuration,
-			ILogger<MessageBusSwitchController> logger)
+			ILogger<MessageBusSwitchController> logger) : base(logger)
 		{
 			_busManager = busManager;
 			_messageBusServiceFactory = messageBusServiceFactory;
 			_configuration = configuration;
-			_logger = logger;
 		}
 
 		/// <summary>

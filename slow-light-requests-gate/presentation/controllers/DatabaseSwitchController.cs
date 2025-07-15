@@ -7,22 +7,21 @@ namespace lazy_light_requests_gate.presentation.controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	public class DatabaseSwitchController : ControllerBase
+	public class DatabaseSwitchController : BaseGatewayController
 	{
 		private readonly IMessageProcessingServiceFactory _messageProcessingServiceFactory;
-		private readonly ILogger<DatabaseSwitchController> _logger;
 		private readonly IDynamicDatabaseManager _databaseManager;
 		private readonly IConfiguration _configuration;
+
 		public DatabaseSwitchController(
 			IMessageProcessingServiceFactory messageProcessingServiceFactory,
 			IDynamicDatabaseManager databaseManager,
 			IConfiguration configuration,
-			ILogger<DatabaseSwitchController> logger)
+			ILogger<DatabaseSwitchController> logger) : base(logger)
 		{
 			_databaseManager = databaseManager;
 			_messageProcessingServiceFactory = messageProcessingServiceFactory;
 			_configuration = configuration;
-			_logger = logger;
 		}
 
 		[HttpPost("switch")]
@@ -78,25 +77,26 @@ namespace lazy_light_requests_gate.presentation.controllers
 				if (string.IsNullOrWhiteSpace(request.DatabaseType))
 					return BadRequest("Database type is required");
 
-				// ИЗМЕНЕНИЕ: Нормализуем тип БД сразу
 				var dbType = DatabaseTypeHelper.Normalize(request.DatabaseType);
 
 				if (dbType != "mongo" && dbType != "postgres")
 					return BadRequest("Supported database types: 'mongodb', 'postgres'");
 
-				// ИЗМЕНЕНИЕ: Передаем уже нормализованный тип
 				await _databaseManager.ReconnectWithNewParametersAsync(dbType, request.ConnectionParameters);
 
-				// ИЗМЕНЕНИЕ: Устанавливаем нормализованный тип БД
 				_messageProcessingServiceFactory.SetDefaultDatabaseType(dbType);
 
 				_logger.LogInformation("Database reconnected to: {DatabaseType} with new parameters", dbType);
 
+				var messageToSent = $"Database reconnected to {dbType} with new parameters";
+				var currentDatabaseResult = _messageProcessingServiceFactory.GetCurrentDatabaseType();
+				var connectionInfoResult = await _databaseManager.GetCurrentConnectionInfoAsync();
+
 				return Ok(new
 				{
-					message = $"Database reconnected to {dbType} with new parameters",
-					currentDatabase = _messageProcessingServiceFactory.GetCurrentDatabaseType(),
-					connectionInfo = await _databaseManager.GetCurrentConnectionInfoAsync()
+					message = messageToSent,
+					currentDatabase = currentDatabaseResult,
+					connectionInfo = connectionInfoResult
 				});
 			}
 			catch (Exception ex)

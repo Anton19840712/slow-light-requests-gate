@@ -5,23 +5,18 @@ namespace lazy_light_requests_gate.presentation.controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TestController : ControllerBase
+public class TestController : BaseGatewayController
 {
-	private readonly ILogger<TestController> _logger;
-	private readonly IConfiguration _configuration;
 	private readonly IWebHostEnvironment _env;
 	private readonly string _instanceId;
+
 	public TestController(
 		ILogger<TestController> logger,
-		IConfiguration configuration,
 		IWebHostEnvironment env,
-		string instanceId)
+		string instanceId) : base(logger)
 	{
 		_instanceId = instanceId;
-		_logger = logger;
-		_configuration = configuration;
 		_env = env;
-		_instanceId = instanceId;
 	}
 
 	// EITHER api:

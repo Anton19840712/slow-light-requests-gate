@@ -8,17 +8,15 @@ namespace lazy_light_requests_gate.presentation.controllers
 	// Контроллер для управления типом приложения
 	[ApiController]
 	[Route("api/[controller]")]
-	public class ApplicationTypeController : ControllerBase
+	public class ApplicationTypeController : BaseGatewayController
 	{
 		private readonly IApplicationTypeService _applicationTypeService;
-		private readonly ILogger<ApplicationTypeController> _logger;
 
 		public ApplicationTypeController(
 			IApplicationTypeService applicationTypeService,
-			ILogger<ApplicationTypeController> logger)
+			ILogger<ApplicationTypeController> logger) : base(logger)
 		{
 			_applicationTypeService = applicationTypeService;
-			_logger = logger;
 		}
 
 		/// <summary>
@@ -101,14 +99,13 @@ namespace lazy_light_requests_gate.presentation.controllers
 		[RequireEitherAPIRuntime]
 		public async Task<IActionResult> SwitchApplicationType([FromBody] SwitchApplicationTypeRequest request)
 		{
-			try
+			return await SafeExecuteAsync(async () =>
 			{
 				if (!Enum.TryParse<ApplicationType>(request.Type, true, out var newType))
 				{
-					return BadRequest(new
+					return ErrorResponse("Invalid application type", 400, new
 					{
-						message = "Invalid application type",
-						validTypes = new[] { "RestOnly", "StreamOnly", "Both" },
+						validTypes = Enum.GetNames(typeof(ApplicationType)),
 						provided = request.Type
 					});
 				}
@@ -116,10 +113,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 				var oldType = _applicationTypeService.GetApplicationType();
 				await _applicationTypeService.SetApplicationTypeAsync(newType);
 
-				_logger.LogInformation("Application type switched from {OldType} to {NewType} by user request",
-					oldType, newType);
-
-				return Ok(new
+				return SuccessResponse(new
 				{
 					message = "Application type switched successfully",
 					oldType = oldType.ToString(),
@@ -130,12 +124,7 @@ namespace lazy_light_requests_gate.presentation.controllers
 					isBothEnabled = _applicationTypeService.IsBothEnabled(),
 					timestamp = DateTime.UtcNow
 				});
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Ошибка переключения типа приложения");
-				return StatusCode(500, new { message = "Ошибка переключения типа приложения", error = ex.Message });
-			}
+			}, "SwitchApplicationType", "Application type switched successfully", request);
 		}
 
 		[HttpGet("switch-history")]

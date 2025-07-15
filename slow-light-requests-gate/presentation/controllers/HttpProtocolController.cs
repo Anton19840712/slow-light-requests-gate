@@ -8,9 +8,8 @@ namespace lazy_light_requests_gate.presentation.controllers;
 
 [ApiController]
 [Route("api/httpprotocol")]
-public class HttpProtocolController : ControllerBase
+public class HttpProtocolController : BaseGatewayController
 {
-	private readonly ILogger<HttpProtocolController> _logger;
 	private readonly IHeaderValidationService _headerValidationService;
 	private readonly IMessageProcessingServiceFactory _messageProcessingServiceFactory;
 	private readonly IConfiguration _configuration;
@@ -20,9 +19,8 @@ public class HttpProtocolController : ControllerBase
 		ILogger<HttpProtocolController> logger,
 		IHeaderValidationService headerValidationService,
 		IMessageProcessingServiceFactory messageProcessingServiceFactory,
-		IConfiguration configuration)
+		IConfiguration configuration) : base(logger)
 	{
-		_logger = logger;
 		_headerValidationService = headerValidationService;
 		_messageProcessingServiceFactory = messageProcessingServiceFactory;
 		_configuration = configuration;
@@ -33,12 +31,12 @@ public class HttpProtocolController : ControllerBase
 	/// Работает в режимах: RestOnly и Both
 	/// </summary>
 	[HttpPost("push")]
-	[RequireRestRuntime] // ✅ Теперь правильно работает с Both режимом
+	[RequireRestRuntime]
 	public async Task<IActionResult> PushMessage()
 	{
-		try
+		return await SafeExecuteAsync(async () =>
 		{
-			_logger.LogInformation("=== HTTP Protocol Push Request Started ===");
+			LogOperationStart("PushMessage");
 
 			// Получаем конфигурацию
 			var config = GetRequestConfiguration();
@@ -59,11 +57,10 @@ public class HttpProtocolController : ControllerBase
 				if (!isValid)
 				{
 					_logger.LogWarning("Header validation failed");
-					return BadRequest(new
+					return ErrorResponse("Header validation failed", 400, new
 					{
-						error = "Header validation failed",
 						message = "Заголовки не прошли валидацию",
-						timestamp = DateTime.UtcNow
+						validationEnabled = config.Validate
 					});
 				}
 				_logger.LogInformation("Header validation passed");
@@ -76,29 +73,25 @@ public class HttpProtocolController : ControllerBase
 			// Обрабатываем сообщение
 			await ProcessMessageAsync(config);
 
-			_logger.LogInformation("Message processed successfully, size: {Size} characters", _message?.Length ?? 0);
-
-			return Ok(new
+			var result = new
 			{
 				message = "Модель принята и обработана",
 				processed = true,
-				timestamp = DateTime.UtcNow,
 				messageSize = _message?.Length ?? 0,
 				database = _messageProcessingServiceFactory.GetCurrentDatabaseType(),
-				company = config.CompanyName
-			});
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error processing HTTP push message");
-			return StatusCode(500, new
-			{
-				error = "Internal server error",
-				message = "Ошибка при обработке сообщения",
-				details = ex.Message,
-				timestamp = DateTime.UtcNow
-			});
-		}
+				company = config.CompanyName,
+				configuration = new
+				{
+					validation = config.Validate ? "enabled" : "disabled",
+					protocol = config.Protocol,
+					host = config.Host
+				}
+			};
+
+			LogOperationEnd("PushMessage", result);
+			return SuccessResponse(result, "Сообщение успешно обработано");
+
+		}, "PushMessage", "HTTP сообщение обработано успешно");
 	}
 
 	/// <summary>
@@ -108,11 +101,13 @@ public class HttpProtocolController : ControllerBase
 	[RequireEitherAPIRuntime]
 	public IActionResult GetStatus()
 	{
-		try
+		return SafeExecute(() =>
 		{
+			LogOperationStart("GetStatus");
+
 			var config = GetRequestConfiguration();
 
-			return Ok(new
+			var statusData = new
 			{
 				service = "HttpProtocol",
 				status = "active",
@@ -131,20 +126,13 @@ public class HttpProtocolController : ControllerBase
 					"POST /api/httpprotocol/push",
 					"GET /api/httpprotocol/status",
 					"GET /api/httpprotocol/health"
-				},
-				timestamp = DateTime.UtcNow
-			});
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error getting HTTP Protocol status");
-			return StatusCode(500, new
-			{
-				error = "Failed to get status",
-				details = ex.Message,
-				timestamp = DateTime.UtcNow
-			});
-		}
+				}
+			};
+
+			LogOperationEnd("GetStatus", statusData);
+			return SuccessResponse(statusData, "HTTP Protocol статус получен");
+
+		}, "GetStatus");
 	}
 
 	/// <summary>
@@ -154,16 +142,57 @@ public class HttpProtocolController : ControllerBase
 	[RequireEitherAPIRuntime]
 	public IActionResult HealthCheck()
 	{
-		return Ok(new
+		return SafeExecute(() =>
 		{
-			service = "HttpProtocol",
-			health = "healthy",
-			database = _messageProcessingServiceFactory.GetCurrentDatabaseType(),
-			timestamp = DateTime.UtcNow
-		});
+			var healthData = new
+			{
+				service = "HttpProtocol",
+				health = "healthy",
+				database = _messageProcessingServiceFactory.GetCurrentDatabaseType(),
+				uptime = GetServiceUptime()
+			};
+
+			return SuccessResponse(healthData, "Сервис работает нормально");
+
+		}, "HealthCheck");
+	}
+
+	/// <summary>
+	/// Получить метрики производительности
+	/// </summary>
+	[HttpGet("metrics")]
+	[RequireEitherAPIRuntime]
+	public IActionResult GetMetrics()
+	{
+		return SafeExecute(() =>
+		{
+			var metrics = new
+			{
+				service = "HttpProtocol",
+				requestsProcessed = GetProcessedRequestsCount(),
+				averageProcessingTime = GetAverageProcessingTime(),
+				lastProcessedMessage = GetLastProcessedMessageInfo(),
+				currentDatabase = _messageProcessingServiceFactory.GetCurrentDatabaseType()
+			};
+
+			return SuccessResponse(metrics, "Метрики получены");
+
+		}, "GetMetrics");
 	}
 
 	#region Private Methods
+
+	private IActionResult SafeExecute(Func<IActionResult> operation, string operationName)
+	{
+		try
+		{
+			return operation();
+		}
+		catch (Exception ex)
+		{
+			return HandleException(ex, operationName);
+		}
+	}
 
 	private RequestConfiguration GetRequestConfiguration()
 	{
@@ -187,7 +216,6 @@ public class HttpProtocolController : ControllerBase
 
 		foreach (var header in Request.Headers)
 		{
-			// Скрываем чувствительные заголовки
 			if (IsSensitiveHeader(header.Key))
 			{
 				_logger.LogInformation("{Header}: [HIDDEN]", header.Key);
@@ -201,17 +229,16 @@ public class HttpProtocolController : ControllerBase
 
 	private async Task ReadRequestBodyAsync()
 	{
-		Request.EnableBuffering(); // Важно! Позволяет читать тело повторно
+		Request.EnableBuffering();
 
 		using var reader = new StreamReader(Request.Body, Encoding.UTF8,
 			detectEncodingFromByteOrderMarks: false, leaveOpen: true);
 
 		_message = await reader.ReadToEndAsync();
-		Request.Body.Position = 0; // Сбрасываем позицию для повторного чтения
+		Request.Body.Position = 0;
 
 		_logger.LogInformation("Request body received, size: {Size} characters", _message?.Length ?? 0);
 
-		// Логируем тело только если оно не слишком большое
 		if (_message != null && _message.Length <= 2000)
 		{
 			_logger.LogInformation("Request body: {Body}", _message);
@@ -254,6 +281,31 @@ public class HttpProtocolController : ControllerBase
 		};
 
 		return sensitiveHeaders.Contains(headerName.ToLowerInvariant());
+	}
+
+	// Заглушки для метрик - реализуйте согласно вашей архитектуре
+	private TimeSpan GetServiceUptime()
+	{
+		// Реализуйте логику получения времени работы сервиса
+		return TimeSpan.FromMinutes(1);
+	}
+
+	private int GetProcessedRequestsCount()
+	{
+		// Реализуйте логику подсчета обработанных запросов
+		return 0;
+	}
+
+	private double GetAverageProcessingTime()
+	{
+		// Реализуйте логику подсчета среднего времени обработки
+		return 0.0;
+	}
+
+	private object GetLastProcessedMessageInfo()
+	{
+		// Реализуйте логику получения информации о последнем обработанном сообщении
+		return new { timestamp = DateTime.UtcNow, size = _message?.Length ?? 0 };
 	}
 
 	#endregion

@@ -66,7 +66,7 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			{
 				_logger.LogInformation("Reconnecting to {DatabaseType} with new parameters", databaseType);
 
-				// ВАЖНО: Тестируем подключение ПЕРЕД обновлением клиентов
+				// ВАЖНО: Тестируем и перед тестированием обновляем, тестируем подключение ПЕРЕД обновлением клиентов, чтобы проверить валидность данных конфигурации:
 				var testResult = await TestConnectionAsync(databaseType, parameters);
 
 				if (!testResult.IsSuccess)
@@ -80,12 +80,12 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 
 				try
 				{
-					// Обновляем внутреннее состояние
+					// Обновляем внутреннее состояние полей менеджера по runtime новыми параметрам:
 					_currentDatabaseType = databaseType;
 					_currentConnectionParameters = parameters;
 
-					// Обновляем конфигурацию
-					await UpdateConfigurationAsync(databaseType, parameters);
+					// Обновляем конфигурацию системы по базе данных, но ты уже обновлял:
+					// await UpdateConfigurationAsync(databaseType, parameters);
 
 					// ТОЛЬКО ПОСЛЕ успешного тестирования обновляем клиенты
 					await RecreateConnectionsAsync(databaseType, parameters);
@@ -115,19 +115,16 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			{
 				_logger.LogDebug("Testing connection to {DatabaseType}", databaseType);
 
-				switch (databaseType.ToLower())
+				return databaseType.ToLower() switch
 				{
-					case "postgres":
-						return await TestPostgresConnectionAsync(parameters);
-					case "mongo":
-						return await TestMongoConnectionAsync(parameters);
-					default:
-						return new ConnectionTestResult
-						{
-							IsSuccess = false,
-							Message = $"Unsupported database type: {databaseType}"
-						};
-				}
+					"postgres" => await TestPostgresConnectionAsync(parameters),
+					"mongo" => await TestMongoConnectionAsync(parameters),
+					_ => new ConnectionTestResult
+					{
+						IsSuccess = false,
+						Message = $"Unsupported database type: {databaseType}"
+					},
+				};
 			}
 			catch (Exception ex)
 			{
@@ -148,8 +145,7 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 				Parameters = _currentConnectionParameters,
 				LastConnected = DateTime.UtcNow
 			};
-
-			return Task.FromResult((dynamic)model);
+			return Task.FromResult((object)model);
 		}
 
 		public async Task<DatabaseHealthStatus> CheckHealthAsync()
@@ -207,14 +203,19 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			return parameters;
 		}
 
+		/// <summary>
+		/// Сначала тестируем соединение
+		/// </summary>
+		/// <param name="parameters"></param>
+		/// <returns></returns>
 		private async Task<ConnectionTestResult> TestPostgresConnectionAsync(Dictionary<string, object> parameters)
 		{
 			try
 			{
-				var host = parameters.GetValueOrDefault("Host", "localhost")?.ToString();
+				// забираем данные из переданных параметров словаря:
+				var host = parameters.GetValueOrDefault("host", "localhost")?.ToString();
 
-
-				var portValue = parameters.GetValueOrDefault("Port", 5432);
+				var portValue = parameters.GetValueOrDefault("port", 5432);
 				int port;
 				if (portValue is JsonElement jsonElement)
 				{
@@ -225,13 +226,16 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 					port = Convert.ToInt32(portValue);
 				}
 
-				var username = parameters.GetValueOrDefault("Username", "postgres")?.ToString();
-				var password = parameters.GetValueOrDefault("Password", "")?.ToString();
-				var database = parameters.GetValueOrDefault("Database", "postgres")?.ToString();
+				var username = parameters.GetValueOrDefault("username", "postgres")?.ToString();
+				var password = parameters.GetValueOrDefault("password", "")?.ToString();
+				var database = parameters.GetValueOrDefault("database", "postgres")?.ToString();
 
+				// создаем строку подключения:
 				var connectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database};";
 
-				var postgresSection = _configuration.GetSection("PostgresDbSettings");
+				// мы обновляем runtime конфигурацию, потому что мы в ensure database согласно этой конфигурации будем накатывать параметры базы:
+				// считаю, что обновлять до метода OpenAsync() не критично
+				// первый раз обновляем
 				await UpdateConfigurationAsync("postgres", parameters);
 
 				await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(_configuration);
@@ -273,127 +277,58 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			{
 				string connectionString;
 				string database;
-
-				if (parameters.ContainsKey("ConnectionString") && !string.IsNullOrEmpty(parameters["ConnectionString"]?.ToString()))
+				// внимание: должно быть соответствие по ключам из тела запроса:
+				var host = parameters.GetValueOrDefault("host", "localhost")?.ToString();
+				var portValue = parameters.GetValueOrDefault("port", 27017);
+				int port;
+				if (portValue is JsonElement jsonElement)
 				{
-					var rawConnectionString = parameters["ConnectionString"].ToString();
-					database = parameters.GetValueOrDefault("DatabaseName", "test")?.ToString();
-
-					// Проверяем, содержит ли строка подключения полный URL
-					if (!rawConnectionString.StartsWith("mongodb://") && !rawConnectionString.StartsWith("mongodb+srv://"))
-					{
-						// Если это не полная строка, строим её из отдельных компонентов
-						var host = parameters.GetValueOrDefault("Host", "localhost")?.ToString();
-
-						var portValue = parameters.GetValueOrDefault("Port", 27017);
-						int port;
-						if (portValue is JsonElement jsonElement)
-						{
-							port = jsonElement.GetInt32();
-						}
-						else
-						{
-							port = Convert.ToInt32(portValue);
-						}
-
-						var username = parameters.GetValueOrDefault("User", "")?.ToString() ??
-									  parameters.GetValueOrDefault("UserName", "")?.ToString();
-						var password = parameters.GetValueOrDefault("Password", "")?.ToString();
-						var authDatabase = parameters.GetValueOrDefault("AuthDatabase", "admin")?.ToString();
-
-						connectionString = BuildMongoConnectionString(host, port, username, password, database, authDatabase);
-					}
-					else
-					{
-						connectionString = rawConnectionString;
-					}
+					port = jsonElement.GetInt32();
 				}
 				else
 				{
-					var host = parameters.GetValueOrDefault("Host", "localhost")?.ToString();
-
-					var portValue = parameters.GetValueOrDefault("Port", 27017);
-					int port;
-					if (portValue is JsonElement jsonElement)
-					{
-						port = jsonElement.GetInt32();
-					}
-					else
-					{
-						port = Convert.ToInt32(portValue);
-					}
-
-					var username = parameters.GetValueOrDefault("UserName", "")?.ToString() ??
-								  parameters.GetValueOrDefault("User", "")?.ToString();
-					var password = parameters.GetValueOrDefault("Password", "")?.ToString();
-					database = parameters.GetValueOrDefault("DatabaseName", "test")?.ToString() ??
-							  parameters.GetValueOrDefault("Database", "test")?.ToString();
-					var authDatabase = parameters.GetValueOrDefault("AuthDatabase", "admin")?.ToString();
-
-					connectionString = BuildMongoConnectionString(host, port, username, password, database, authDatabase);
+					port = Convert.ToInt32(portValue);
 				}
+				var username = parameters.GetValueOrDefault("username", "")?.ToString();
+				var password = parameters.GetValueOrDefault("password", "")?.ToString();
+				database = parameters.GetValueOrDefault("database", "test")?.ToString();
+				var authDatabase = parameters.GetValueOrDefault("authdatabase", "admin")?.ToString();
+				connectionString = BuildMongoConnectionString(host, port, username, password, database, authDatabase);
 
-				_logger.LogDebug("Testing MongoDB connection with masked connection string: {ConnectionString}",
-					MaskConnectionString(connectionString));
-
-				// ВАЖНО: Создаем ПОЛНОСТЬЮ НЕЗАВИСИМЫЙ клиент для тестирования
+				_logger.LogDebug("Testing MongoDB connection with masked connection string: {ConnectionString}", MaskConnectionString(connectionString));
 				var settings = MongoClientSettings.FromUrl(new MongoUrl(connectionString));
-
 				// Настраиваем SSL если необходимо
 				settings.SslSettings = new SslSettings
 				{
 					EnabledSslProtocols = SslProtocols.Tls12
 				};
 
-				// Устанавливаем короткие таймауты для быстрого тестирования
 				settings.ConnectTimeout = TimeSpan.FromSeconds(5);
 				settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
 
-				// Создаем НОВЫЙ независимый клиент только для тестирования
-				IMongoClient testClient = null;
-				IMongoDatabase testDb = null;
+				var testClient = new MongoClient(settings);
+				var testDb = testClient.GetDatabase(database);
 
-				try
+				// Тестируем подключение с коротким таймаутом
+				using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+				await testDb.RunCommandAsync<MongoDB.Bson.BsonDocument>(
+					new MongoDB.Bson.BsonDocument("ping", 1),
+					cancellationToken: cts.Token);
+				var serverVersion = await testDb.RunCommandAsync<MongoDB.Bson.BsonDocument>(
+					new MongoDB.Bson.BsonDocument("buildInfo", 1),
+					cancellationToken: cts.Token);
+				_logger.LogInformation("Successfully connected to MongoDB database: {Database}", database);
+				return new ConnectionTestResult
 				{
-					testClient = new MongoClient(settings);
-					testDb = testClient.GetDatabase(database);
-
-					// Тестируем подключение с коротким таймаутом
-					using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-					await testDb.RunCommandAsync<MongoDB.Bson.BsonDocument>(
-						new MongoDB.Bson.BsonDocument("ping", 1),
-						cancellationToken: cts.Token);
-
-					var serverVersion = await testDb.RunCommandAsync<MongoDB.Bson.BsonDocument>(
-						new MongoDB.Bson.BsonDocument("buildInfo", 1),
-						cancellationToken: cts.Token);
-
-					_logger.LogInformation("Successfully connected to MongoDB database: {Database}", database);
-
-					return new ConnectionTestResult
+					IsSuccess = true,
+					Message = "Connection successful",
+					ConnectionInfo = new
 					{
-						IsSuccess = true,
-						Message = "Connection successful",
-						ConnectionInfo = new
-						{
-							ConnectionString = MaskConnectionString(connectionString),
-							Database = database,
-							Version = serverVersion.GetValue("version", "unknown").ToString()
-						}
-					};
-				}
-				finally
-				{
-					// КРИТИЧНО: Закрываем тестовый клиент после использования
-					try
-					{
-						testClient?.Cluster?.Dispose();
+						ConnectionString = MaskConnectionString(connectionString),
+						Database = database,
+						Version = serverVersion.GetValue("version", "unknown").ToString()
 					}
-					catch (Exception disposeEx)
-					{
-						_logger.LogDebug(disposeEx, "Error disposing test MongoDB client");
-					}
-				}
+				};
 			}
 			catch (Exception ex)
 			{
@@ -452,6 +387,9 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 				"$1***$3");
 		}
 
+
+		// 1 кажется, я в этот метод захожу второй раз:
+		// устанавливаем новые параметры в конфигурацию
 		private Task UpdateConfigurationAsync(string databaseType, Dictionary<string, object> parameters)
 		{
 			_configuration["Database"] = databaseType;
@@ -459,27 +397,41 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			switch (databaseType.ToLower())
 			{
 				case "postgres":
-					_configuration["PostgresDbSettings:Host"] = parameters.GetValueOrDefault("Host", "localhost")?.ToString();
-					_configuration["PostgresDbSettings:Port"] = parameters.GetValueOrDefault("Port", 5432)?.ToString();
-					_configuration["PostgresDbSettings:Username"] = parameters.GetValueOrDefault("Username", "postgres")?.ToString();
-					_configuration["PostgresDbSettings:Password"] = parameters.GetValueOrDefault("Password", "")?.ToString();
-					_configuration["PostgresDbSettings:Database"] = parameters.GetValueOrDefault("Database", "postgres")?.ToString();
+
+					var host = parameters.GetValueOrDefault("host", "localhost")?.ToString();
+					var port = parameters.GetValueOrDefault("port", 5432)?.ToString();
+					var username = parameters.GetValueOrDefault("username", "postgres")?.ToString();
+					var password = parameters.GetValueOrDefault("password", "")?.ToString();
+					var database = parameters.GetValueOrDefault("database", "postgres")?.ToString();
+
+					_configuration["PostgresDbSettings:Host"] = host;
+					_configuration["PostgresDbSettings:Port"] = port;
+					_configuration["PostgresDbSettings:Username"] = username;
+					_configuration["PostgresDbSettings:Password"] = password;
+					_configuration["PostgresDbSettings:Database"] = database;
+
 					break;
 
 				case "mongo":
-					if (parameters.ContainsKey("ConnectionString"))
+					if (parameters.ContainsKey("сonnectionstring"))
 					{
-						_configuration["MongoDbSettings:ConnectionString"] = parameters["ConnectionString"]?.ToString();
+						_configuration["MongoDbSettings:ConnectionString"] = parameters["сonnectionstring"]?.ToString();
 					}
 
-					var databaseName = parameters.GetValueOrDefault("DatabaseName", "test")?.ToString() ??
-									  parameters.GetValueOrDefault("Database", "test")?.ToString();
+					var databaseName = parameters.GetValueOrDefault("database", "test")?.ToString();
 					_configuration["MongoDbSettings:DatabaseName"] = databaseName;
 
-					if (parameters.ContainsKey("User"))
-						_configuration["MongoDbSettings:User"] = parameters["User"]?.ToString();
-					if (parameters.ContainsKey("Password"))
-						_configuration["MongoDbSettings:Password"] = parameters["Password"]?.ToString();
+					if (parameters.ContainsKey("username"))
+					{
+						var userName = parameters["username"]?.ToString();
+						_configuration["MongoDbSettings:User"] = userName;
+					}
+					if (parameters.ContainsKey("password")) 
+					{
+						var pass = parameters["password"]?.ToString();
+						_configuration["MongoDbSettings:Password"] = pass;
+					}
+
 					break;
 			}
 
