@@ -10,5 +10,6 @@ namespace lazy_light_requests_gate.core.application.interfaces.databases
 		Task<object> GetCurrentConnectionInfoAsync();
 		Task<DatabaseHealthStatus> CheckHealthAsync();
 		string GetCurrentDatabaseType();
+		Task InitializeDatabaseSchemaAsync(string dbType);
 	}
 }

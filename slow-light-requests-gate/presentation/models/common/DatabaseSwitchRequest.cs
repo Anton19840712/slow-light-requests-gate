@@ -3,5 +3,7 @@
 	public class DatabaseSwitchRequest
 	{
 		public string DatabaseType { get; set; }
+
+		public bool InitializeSchema { get; set; } = true;
 	}
 }

@@ -3,5 +3,6 @@
 	public class DatabaseTestRequest
 	{
 		public string DatabaseType { get; set; }
+		public Dictionary<string, object> ConnectionParameters { get; set; }
 	}
 }

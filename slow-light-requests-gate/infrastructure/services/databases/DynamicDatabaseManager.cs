@@ -472,7 +472,7 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 						catch (Exception ex)
 						{
 							_logger.LogError(ex, "Failed to reconnect PostgreSQL dynamic client");
-							throw; // Пробрасываем исключение для rollback
+							throw;
 						}
 					}
 					break;
@@ -480,6 +480,14 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 				default:
 					_logger.LogWarning("No dynamic client available for database type: {DatabaseType}", databaseType);
 					break;
+			}
+		}
+
+		public async Task InitializeDatabaseSchemaAsync(string dbType)
+		{
+			if (dbType=="postgres")
+			{
+				await PostgresDbConfiguration.EnsureDatabaseInitializedAsync(_configuration);
 			}
 		}
 	}

@@ -30,7 +30,7 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			await _semaphore.WaitAsync();
 			try
 			{
-				_logger.LogInformation("Reconnecting MongoDB client with new parameters");
+				_logger.LogInformation("Recreating MongoDB client with new parameters");
 
 				var connectionString = parameters.GetValueOrDefault("ConnectionString")?.ToString();
 				if (string.IsNullOrEmpty(connectionString))
@@ -59,7 +59,10 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 
 				var databaseName = parameters.GetValueOrDefault("DatabaseName", "test")?.ToString();
 
-				// ВАЖНО: Сначала создаем и тестируем новое подключение
+				// Закрываем старое соединение СНАЧАЛА
+				await DisposeCurrentConnectionAsync();
+
+				// Создаем новое подключение БЕЗ тестирования
 				var settings = MongoClientSettings.FromUrl(new MongoUrl(connectionString));
 				settings.SslSettings = new SslSettings { EnabledSslProtocols = SslProtocols.Tls12 };
 				settings.ConnectTimeout = TimeSpan.FromSeconds(10);
@@ -68,49 +71,46 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 				var newClient = new MongoClient(settings);
 				var newDatabase = newClient.GetDatabase(databaseName);
 
-				// Тестируем новое подключение с таймаутом
-				using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-				try
-				{
-					await newDatabase.RunCommandAsync<MongoDB.Bson.BsonDocument>(
-						new MongoDB.Bson.BsonDocument("ping", 1),
-						cancellationToken: cts.Token);
-				}
-				catch (Exception ex)
-				{
-					// Если новое подключение не работает, закрываем его и выбрасываем исключение
-					try { newClient?.Cluster?.Dispose(); } catch { }
-					throw new InvalidOperationException($"Failed to test new MongoDB connection: {ex.Message}", ex);
-				}
-
-				// Сохраняем ссылку на старые объекты для безопасного закрытия
-				var oldClient = _client;
-				var oldDatabase = _database;
-
-				// Заменяем на новые ТОЛЬКО после успешного тестирования
+				// Устанавливаем новое соединение БЕЗ предварительного тестирования
 				_client = newClient;
 				_database = newDatabase;
 
-				// Закрываем старое подключение после замены
-				try
-				{
-					oldClient?.Cluster?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					_logger.LogWarning(ex, "Error disposing old MongoDB client");
-				}
-
-				_logger.LogInformation("MongoDB client reconnected successfully to: {DatabaseName}", databaseName);
+				_logger.LogInformation("MongoDB client recreated successfully for database: {DatabaseName}", databaseName);
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Failed to reconnect MongoDB client");
+				_logger.LogError(ex, "Failed to recreate MongoDB client");
 				throw;
 			}
 			finally
 			{
 				_semaphore.Release();
+			}
+		}
+
+		private async Task DisposeCurrentConnectionAsync()
+		{
+			if (_client != null)
+			{
+				_logger.LogInformation("Disposing current MongoDB connection...");
+
+				try
+				{
+					// Даем время завершить текущие операции
+					await Task.Delay(1000);
+
+					_client.Cluster?.Dispose();
+					_logger.LogInformation("MongoDB connection disposed successfully");
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Error disposing MongoDB client");
+				}
+				finally
+				{
+					_client = null;
+					_database = null;
+				}
 			}
 		}
 
@@ -141,11 +141,8 @@ namespace lazy_light_requests_gate.infrastructure.services.databases
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Failed to initialize MongoDB client from configuration");
-
-				// Создаем dummy клиент для предотвращения null reference
-				var defaultSettings = new MongoClientSettings();
-				_client = new MongoClient(defaultSettings);
-				_database = _client.GetDatabase("test");
+				_client = null;
+				_database = null;
 			}
 		}
 

@@ -42,6 +42,32 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 			}
 		}
 
+		private async Task<bool> CanAccessDatabase()
+		{
+			try
+			{
+				var database = _dynamicClient.GetDatabase();
+				if (database == null) return false;
+
+				// Простой ping для проверки соединения
+				using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+				await database.RunCommandAsync<MongoDB.Bson.BsonDocument>(
+					new MongoDB.Bson.BsonDocument("ping", 1),
+					cancellationToken: cts.Token);
+				return true;
+			}
+			catch (ObjectDisposedException)
+			{
+				Log.Warning("MongoDB client is disposed, cannot access database");
+				return false;
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Cannot access MongoDB database");
+				return false;
+			}
+		}
+
 		private IMongoCollection<T> GetMongoCollection()
 		{
 			// Проверяем, является ли MongoDB текущей базой данных
@@ -50,9 +76,29 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 				throw new InvalidOperationException("MongoDB is not the current database");
 			}
 
-			var database = _dynamicClient.GetDatabase();
-			string collectionName = GetCollectionName(typeof(T), _settings.Value);
-			return database.GetCollection<T>(collectionName);
+			try
+			{
+				var database = _dynamicClient.GetDatabase();
+				if (database == null)
+				{
+					throw new InvalidOperationException("MongoDB database is not available");
+				}
+
+				string collectionName = GetCollectionName(typeof(T), _settings.Value);
+				var collection = database.GetCollection<T>(collectionName);
+
+				return collection;
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client is disposed, cannot get collection for {EntityType}", typeof(T).Name);
+				throw new InvalidOperationException("MongoDB client is disposed", ex);
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Failed to get MongoDB collection for {EntityType}", typeof(T).Name);
+				throw new InvalidOperationException($"Failed to access MongoDB collection: {ex.Message}", ex);
+			}
 		}
 
 		private string GetCollectionName(Type entityType, MongoDbSettings settings)
@@ -72,11 +118,24 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				// Сначала проверяем доступность базы
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for GetByIdAsync");
+					return null;
+				}
+
 				var collection = GetMongoCollection();
 				return await collection.Find(Builders<T>.Filter.Eq("_id", id)).FirstOrDefaultAsync();
 			}
-			catch (Exception)
+			catch (ObjectDisposedException ex)
 			{
+				Log.Warning(ex, "MongoDB client disposed during GetByIdAsync: {Id}", id);
+				return null;
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Failed to get entity by ID from MongoDB: {Id}", id);
 				return null;
 			}
 		}
@@ -88,11 +147,24 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				// Сначала проверяем доступность базы
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for GetAllAsync");
+					return new List<T>();
+				}
+
 				var collection = GetMongoCollection();
 				return await collection.Find(_ => true).ToListAsync();
 			}
-			catch (Exception)
+			catch (ObjectDisposedException ex)
 			{
+				Log.Warning(ex, "MongoDB client disposed during GetAllAsync");
+				return new List<T>();
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Failed to get all entities from MongoDB");
 				return new List<T>();
 			}
 		}
@@ -104,11 +176,23 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for FindAsync");
+					return new List<T>();
+				}
+
 				var collection = GetMongoCollection();
 				return await collection.Find(filter).ToListAsync();
 			}
-			catch (Exception)
+			catch (ObjectDisposedException ex)
 			{
+				Log.Warning(ex, "MongoDB client disposed during FindAsync");
+				return new List<T>();
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Failed to find entities in MongoDB");
 				return new List<T>();
 			}
 		}
@@ -120,8 +204,18 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for InsertAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				await collection.InsertOneAsync(entity);
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during InsertAsync");
 			}
 			catch (Exception ex)
 			{
@@ -136,6 +230,12 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for UpdateAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				var filter = Builders<T>.Filter.Eq("_id", ObjectId.Parse(id));
 				var existingEntity = await collection.Find(filter).FirstOrDefaultAsync();
@@ -170,6 +270,10 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 					await collection.UpdateOneAsync(filter, updateDefinition);
 				}
 			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during UpdateAsync");
+			}
 			catch (Exception ex)
 			{
 				Log.Warning(ex, "Failed to update entity in MongoDB");
@@ -183,8 +287,18 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for DeleteByIdAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				await collection.DeleteOneAsync(Builders<T>.Filter.Eq("_id", id));
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during DeleteByIdAsync");
 			}
 			catch (Exception ex)
 			{
@@ -204,6 +318,12 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for DeleteByTtlAsync");
+					return 0;
+				}
+
 				var filter = Builders<OutboxMessage>.Filter.And(
 					Builders<OutboxMessage>.Filter.Lt(m => m.CreatedAt, DateTime.UtcNow - olderThan),
 					Builders<OutboxMessage>.Filter.Eq(m => m.IsProcessed, true)
@@ -214,8 +334,14 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 				return (int)result.DeletedCount;
 			}
-			catch (Exception)
+			catch (ObjectDisposedException ex)
 			{
+				Log.Warning(ex, "MongoDB client disposed during DeleteByTtlAsync");
+				return 0;
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Failed to delete old records from MongoDB");
 				return 0;
 			}
 		}
@@ -227,12 +353,24 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for GetUnprocessedMessagesAsync");
+					return new List<T>();
+				}
+
 				var collection = GetMongoCollection();
 				var filter = Builders<T>.Filter.Eq("IsProcessed", false);
 				return await collection.Find(filter).ToListAsync();
 			}
-			catch (Exception)
+			catch (ObjectDisposedException ex)
 			{
+				Log.Warning(ex, "MongoDB client disposed during GetUnprocessedMessagesAsync");
+				return new List<T>();
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Failed to get unprocessed messages from MongoDB");
 				return new List<T>();
 			}
 		}
@@ -244,12 +382,22 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for MarkMessageAsProcessedAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				var update = Builders<T>.Update
 					.Set("IsProcessed", true)
 					.Set("ProcessedAt", DateTime.UtcNow);
 
 				await collection.UpdateOneAsync(Builders<T>.Filter.Eq("Id", messageId), update);
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during MarkMessageAsProcessedAsync");
 			}
 			catch (Exception ex)
 			{
@@ -264,8 +412,18 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for SaveMessageAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				await collection.InsertOneAsync(message);
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during SaveMessageAsync");
 			}
 			catch (Exception ex)
 			{
@@ -280,6 +438,12 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for UpdateMessageAsync");
+					return;
+				}
+
 				if (message is OutboxMessage outboxMessage)
 				{
 					var collection = GetMongoCollection();
@@ -294,6 +458,10 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 				{
 					throw new InvalidOperationException("UpdateMessageAsync поддерживает только OutboxMessage");
 				}
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during UpdateMessageAsync");
 			}
 			catch (Exception ex)
 			{
@@ -310,6 +478,12 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for UpdateMessagesAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				var bulkOps = new List<WriteModel<T>>();
 
@@ -364,6 +538,10 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 						result.ModifiedCount, result.Upserts.Count);
 				}
 			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during UpdateMessagesAsync");
+			}
 			catch (Exception ex)
 			{
 				Log.Warning(ex, "Failed to update MongoDB messages, operation skipped");
@@ -390,8 +568,18 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for InsertMessagesAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				await collection.InsertManyAsync(messages);
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during InsertMessagesAsync");
 			}
 			catch (Exception ex)
 			{
@@ -409,9 +597,19 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for DeleteMessagesAsync");
+					return;
+				}
+
 				var collection = GetMongoCollection();
 				var filter = Builders<T>.Filter.In("Id", ids);
 				await collection.DeleteManyAsync(filter);
+			}
+			catch (ObjectDisposedException ex)
+			{
+				Log.Warning(ex, "MongoDB client disposed during DeleteMessagesAsync");
 			}
 			catch (Exception ex)
 			{
@@ -426,6 +624,12 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 
 			try
 			{
+				if (!await CanAccessDatabase())
+				{
+					Log.Warning("Cannot access MongoDB database for DeleteOldRecordsAsync");
+					return 0;
+				}
+
 				var collection = GetMongoCollection();
 				var filters = new List<FilterDefinition<T>>
 				{
@@ -444,8 +648,14 @@ namespace lazy_light_requests_gate.infrastructure.data.repos
 				var result = await collection.DeleteManyAsync(filter);
 				return (int)result.DeletedCount;
 			}
-			catch (Exception)
+			catch (ObjectDisposedException ex)
 			{
+				Log.Warning(ex, "MongoDB client disposed during DeleteOldRecordsAsync");
+				return 0;
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Failed to delete old records from MongoDB");
 				return 0;
 			}
 		}
