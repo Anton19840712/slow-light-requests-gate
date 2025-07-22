@@ -13,8 +13,8 @@ namespace lazy_light_requests_gate.infrastructure.configuration
 		public static IServiceCollection AddMessageServingServices(this IServiceCollection services, IConfiguration configuration)
 		{
 			services.AddScoped<IMessageProcessingServiceFactory, MessageProcessingServiceFactory>();
-			services.AddTransient<MessageProcessingPostgresService>();
-			services.AddTransient<MessageProcessingMongoService>();
+			services.AddScoped<MessageProcessingPostgresService>();
+			services.AddScoped<MessageProcessingMongoService>();
 
 			services.AddScoped<ConnectionMessageSenderFactory>();
 			services.AddScoped<IMessageSender, MessageSender>();

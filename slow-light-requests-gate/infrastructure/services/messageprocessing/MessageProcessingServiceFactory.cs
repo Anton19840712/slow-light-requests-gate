@@ -1,41 +1,42 @@
 ﻿using lazy_light_requests_gate.core.application.interfaces.messageprocessing;
+using lazy_light_requests_gate.infrastructure.services.messageprocessing;
 
-namespace lazy_light_requests_gate.infrastructure.services.messageprocessing
+public class MessageProcessingServiceFactory : IMessageProcessingServiceFactory
 {
-	public class MessageProcessingServiceFactory : IMessageProcessingServiceFactory
+	private readonly IServiceScopeFactory _serviceScopeFactory;
+	private static string _currentDatabaseType;
+
+	public MessageProcessingServiceFactory(IServiceScopeFactory serviceScopeFactory, IConfiguration configuration)
 	{
-		private readonly IServiceProvider _serviceProvider;
-		private static string _currentDatabaseType;
-
-		public MessageProcessingServiceFactory(IServiceProvider serviceProvider, IConfiguration configuration)
+		_serviceScopeFactory = serviceScopeFactory;
+		if (string.IsNullOrEmpty(_currentDatabaseType))
 		{
-			_serviceProvider = serviceProvider;
-			if (string.IsNullOrEmpty(_currentDatabaseType))
-			{
-				_currentDatabaseType = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
-			}
+			_currentDatabaseType = configuration["Database"]?.ToString()?.ToLower() ?? "mongo";
 		}
+	}
 
-		public MessageProcessingServiceBase CreateMessageProcessingService(string databaseType)
+	public MessageProcessingServiceBase CreateMessageProcessingService(string databaseType)
+	{
+		var dbType = databaseType?.ToLower() ?? _currentDatabaseType;
+
+		using var scope = _serviceScopeFactory.CreateScope();
+		var serviceProvider = scope.ServiceProvider;
+
+		return dbType switch
 		{
-			var dbType = databaseType?.ToLower() ?? _currentDatabaseType;
+			"postgres" => serviceProvider.GetRequiredService<MessageProcessingPostgresService>(),
+			"mongo" => serviceProvider.GetRequiredService<MessageProcessingMongoService>(),
+			_ => throw new ArgumentException($"Unsupported database type: {databaseType}")
+		};
+	}
 
-			return dbType switch
-			{
-				"postgres" => _serviceProvider.GetRequiredService<MessageProcessingPostgresService>(),
-				"mongo" => _serviceProvider.GetRequiredService<MessageProcessingMongoService>(),
-				_ => throw new ArgumentException($"Unsupported database type: {databaseType}")
-			};
-		}
+	public void SetDefaultDatabaseType(string databaseType)
+	{
+		_currentDatabaseType = databaseType?.ToLower() ?? "mongo";
+	}
 
-		public void SetDefaultDatabaseType(string databaseType)
-		{
-			_currentDatabaseType = databaseType?.ToLower() ?? "mongo";
-		}
-
-		public string GetCurrentDatabaseType()
-		{
-			return _currentDatabaseType;
-		}
+	public string GetCurrentDatabaseType()
+	{
+		return _currentDatabaseType;
 	}
 }

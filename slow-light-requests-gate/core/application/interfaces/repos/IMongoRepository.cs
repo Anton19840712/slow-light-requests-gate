@@ -2,6 +2,5 @@
 {
 	public interface IMongoRepository<T> : IBaseRepository<T> where T : class
 	{
-		//IMongoCollection<T> GetCollection();
 	}
 }

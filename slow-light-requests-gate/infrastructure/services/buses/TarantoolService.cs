@@ -25,6 +25,7 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 		private ISpace _outputSpaceHandle;
 		private readonly SemaphoreSlim _semaphore = new(1, 1);
 		private volatile bool _disposed = false;
+		private volatile bool _initialized = false;
 		private readonly object _disposeLock = new object();
 
 		public TarantoolService(IConfiguration configuration, ILogger<TarantoolService> logger = null)
@@ -44,70 +45,90 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 			_logger?.LogDebug("TarantoolService initialized with config: Host={Host}:{Port}, InputSpace={InputSpace}, OutputSpace={OutputSpace}, Stream={Stream}",
 				_host, _port, _inputSpace, _outputSpace, _streamName);
 
+			// НЕ инициализируем соединение в конструкторе - делаем это лениво
+			_logger?.LogInformation("TarantoolService created. Connection will be initialized on first use.");
+		}
+
+		private async Task EnsureInitializedAsync()
+		{
+			if (_initialized && _box != null)
+				return;
+
+			await _semaphore.WaitAsync();
 			try
 			{
-				InitializeConnectionAsync().Wait();
-				_logger?.LogInformation("Tarantool client initialized successfully for {Host}:{Port}, InputSpace: {InputSpace}, OutputSpace: {OutputSpace}",
-					_host, _port, _inputSpace, _outputSpace);
+				if (_initialized && _box != null)
+					return;
+
+				_logger?.LogDebug("Initializing Tarantool connection...");
+				await InitializeConnectionAsync();
+				_initialized = true;
+				_logger?.LogInformation("Tarantool connection initialized successfully");
 			}
-			catch (Exception ex)
+			finally
 			{
-				_logger?.LogError(ex, "Failed to initialize Tarantool client with Host: {Host}:{Port}", _host, _port);
-				throw;
+				_semaphore.Release();
 			}
 		}
 
 		private async Task InitializeConnectionAsync()
 		{
-			// Connect with authentication if username/password are provided
-			if (!string.IsNullOrEmpty(_username) && !string.IsNullOrEmpty(_password))
-			{
-				_logger?.LogDebug("Connecting to Tarantool with authentication: {Username}", _username);
-
-				// Create connection string with authentication in tarantool:// format
-				var connectionString = $"tarantool://{_username}:{_password}@{_host}:{_port}";
-
-				//ProGaudi.Tarantool.Client.Box - это:
-				//C# клиент для подключения к Tarantool серверу
-				//Асинхронный TCP клиент, который говорит с Tarantool по бинарному протоколу
-				//Entry point для всех операций с базой данных
-				_box = await Box.Connect(connectionString);
-			}
-			else
-			{
-				_logger?.LogDebug("Connecting to Tarantool as guest user");
-				var connectionString = $"{_host}:{_port}";
-				_box = await Box.Connect(connectionString);
-			}
-
-			// Создаем spaces простым способом
-			await EnsureSpacesExistAsync();
-
-			// ВАЖНО: Обновляем схему после создания spaces
-			await _box.ReloadSchema();
-
-			// Получаем handles для spaces
 			try
 			{
+				// Очищаем предыдущее соединение если есть
+				_box?.Dispose();
+
+				// Connect with authentication if username/password are provided
+				if (!string.IsNullOrEmpty(_username) && !string.IsNullOrEmpty(_password))
+				{
+					_logger?.LogDebug("Connecting to Tarantool with authentication: {Username}", _username);
+
+					// Create connection string with authentication in tarantool:// format
+					var connectionString = $"tarantool://{_username}:{_password}@{_host}:{_port}";
+					_box = await Box.Connect(connectionString);
+				}
+				else
+				{
+					_logger?.LogDebug("Connecting to Tarantool as guest user (no credentials provided)");
+					var connectionString = $"{_host}:{_port}";
+					_box = await Box.Connect(connectionString);
+				}
+
+				// Создаем spaces простым способом
+				await EnsureSpacesExistAsync();
+
+				// ВАЖНО: Обновляем схему после создания spaces
+				await _box.ReloadSchema();
+
+				// Получаем handles для spaces
+				try
+				{
 #pragma warning disable CS0618 // Type or member is obsolete
-				var schema = _box.GetSchema();
+					var schema = _box.GetSchema();
 #pragma warning restore CS0618 // Type or member is obsolete
 
-				_inputSpaceHandle = schema[_inputSpace];
-				_outputSpaceHandle = schema[_outputSpace];
+					_inputSpaceHandle = schema[_inputSpace];
+					_outputSpaceHandle = schema[_outputSpace];
 
-				_logger?.LogInformation("Successfully connected to Tarantool spaces: {InputSpace}, {OutputSpace}",
-					_inputSpace, _outputSpace);
+					_logger?.LogInformation("Successfully connected to Tarantool spaces: {InputSpace}, {OutputSpace}",
+						_inputSpace, _outputSpace);
+				}
+				catch (Exception ex)
+				{
+					_logger?.LogError(ex, "Could not get space handles: {Error}. Please create spaces manually in Tarantool console.", ex.Message);
+					_logger?.LogInformation("To create spaces manually, run in Tarantool console:\n" +
+						"box.schema.space.create('{InputSpace}')\n" +
+						"box.space.{InputSpace}:create_index('primary', {{sequence = true}})\n" +
+						"box.schema.space.create('{OutputSpace}')\n" +
+						"box.space.{OutputSpace}:create_index('primary', {{sequence = true}})",
+						_inputSpace, _inputSpace, _outputSpace, _outputSpace);
+					throw;
+				}
 			}
 			catch (Exception ex)
 			{
-				_logger?.LogError(ex, "Could not get space handles: {Error}. Please create spaces manually in Tarantool console.", ex.Message);
-				_logger?.LogInformation("To create spaces manually, run in Tarantool console:\n" +
-					"box.schema.space.create('{InputSpace}')\n" +
-					"box.space.{InputSpace}:create_index('primary', {{sequence = true}})\n" +
-					"box.schema.space.create('{OutputSpace}')\n" +
-					"box.space.{OutputSpace}:create_index('primary', {{sequence = true}})",
-					_inputSpace, _inputSpace, _outputSpace, _outputSpace);
+				_logger?.LogError(ex, "Failed to initialize Tarantool client with Host: {Host}:{Port}, Username: {Username}",
+					_host, _port, _username);
 				throw;
 			}
 		}
@@ -183,12 +204,14 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 
 		private async Task EnsureConnectionAsync()
 		{
-			if (_box == null || _disposed)
+			if (_box == null || _disposed || !_initialized)
 			{
 				try
 				{
 					_box?.Dispose();
+					_initialized = false;
 					await InitializeConnectionAsync();
+					_initialized = true;
 					_logger?.LogDebug("Tarantool connection re-established successfully");
 				}
 				catch (Exception ex)
@@ -206,6 +229,8 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 
 			try
 			{
+				await EnsureInitializedAsync();
+
 				// Используем InputChannel из конфигурации
 				_logger?.LogDebug("Publishing message with key to Tarantool space: {SpaceName}, Key: {Key}", _inputSpace, key);
 
@@ -243,6 +268,8 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 
 			try
 			{
+				await EnsureInitializedAsync();
+
 				// Используем OutputChannel из конфигурации для прослушивания ответов
 				_logger?.LogInformation("Starting Tarantool listener for space: {SpaceName} (configured as OutputSpace)", _outputSpace);
 
@@ -340,6 +367,9 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 			{
 				_logger?.LogDebug("Testing Tarantool connection to {Host}:{Port}...", _host, _port);
 
+				// Пытаемся инициализировать соединение
+				await EnsureInitializedAsync();
+
 				await _semaphore.WaitAsync();
 				try
 				{
@@ -392,12 +422,14 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 					_box?.Dispose();
 					_semaphore?.Dispose();
 					_disposed = true;
+					_initialized = false;
 					_logger?.LogDebug("Tarantool client disposed (sync)");
 				}
 				catch (Exception ex)
 				{
 					_logger?.LogWarning(ex, "Error disposing Tarantool client (sync)");
 					_disposed = true;
+					_initialized = false;
 				}
 			}
 		}
@@ -413,6 +445,7 @@ namespace lazy_light_requests_gate.infrastructure.services.buses
 			{
 				if (_disposed) return ValueTask.CompletedTask;
 				_disposed = true;
+				_initialized = false;
 			}
 
 			try

@@ -32,8 +32,8 @@ namespace lazy_light_requests_gate.infrastructure.startup
 
 		private void ConfigureUrls(WebApplication app, string httpUrl, string httpsUrl)
 		{
-			//app.Urls.Add(httpUrl);
-			//app.Urls.Add(httpsUrl);
+			app.Urls.Add(httpUrl);
+			app.Urls.Add(httpsUrl);
 			Log.Information($"Middleware: шлюз работает на адресах: {httpUrl} и {httpsUrl}");
 			Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] URLs настроены: {httpUrl}, {httpsUrl}");
 		}

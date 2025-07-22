@@ -53,33 +53,75 @@ public class MessageBusServiceFactory : IMessageBusServiceFactory
 	{
 		_logger.LogDebug("Creating standard message bus service for type: {BusType}", normalizedBusType);
 
-		// Создаем scope БЕЗ using - он будет управляться вручную
-		var scope = _serviceScopeFactory.CreateScope();
+		using var scope = _serviceScopeFactory.CreateScope();
 		var serviceProvider = scope.ServiceProvider;
 
-		try
+		return normalizedBusType switch
 		{
-			return normalizedBusType switch
-			{
-				"rabbit" => serviceProvider.GetRequiredService<IRabbitMqBusService>(),
-				"activemq" => serviceProvider.GetRequiredService<IActiveMqService>(),
-				"pulsar" => CreatePulsarService(serviceProvider),
-				"tarantool" => CreateTarantoolService(serviceProvider),
-				"kafkastreams" => CreateKafkaStreamsService(serviceProvider),
-				_ => throw new NotSupportedException($"Bus type '{normalizedBusType}' is not supported. Supported types: rabbit, activemq, pulsar, tarantool, kafkastreams")
-			};
-		}
-		finally
-		{
-			// НЕ вызываем scope.Dispose() для Pulsar и Tarantool, так как они создаются отдельно
-			if (normalizedBusType != "pulsar" && normalizedBusType != "tarantool" && normalizedBusType != "kafkastreams")
-			{
-				scope.Dispose();
-			}
-		}
+			"rabbit" => CreateRabbitMqService(serviceProvider),
+			"activemq" => CreateActiveMqService(serviceProvider),
+			"pulsar" => CreatePulsarService(serviceProvider),
+			"tarantool" => CreateTarantoolService(serviceProvider),
+			"kafkastreams" => CreateKafkaStreamsService(serviceProvider),
+			_ => throw new NotSupportedException($"Bus type '{normalizedBusType}' is not supported. Supported types: rabbit, activemq, pulsar, tarantool, kafkastreams")
+		};
 	}
 
-	// Новые методы для динамического переподключения
+	// Методы создания стандартных сервисов
+
+	private IMessageBusService CreateRabbitMqService(IServiceProvider serviceProvider)
+	{
+		var logger = serviceProvider.GetService<ILogger<RabbitMqBusService>>();
+		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+
+		var factory = new RabbitMQ.Client.ConnectionFactory()
+		{
+			HostName = configuration["RabbitMqSettings:HostName"] ?? "localhost",
+			Port = int.Parse(configuration["RabbitMqSettings:Port"] ?? "5672"),
+			UserName = configuration["RabbitMqSettings:UserName"] ?? "guest",
+			Password = configuration["RabbitMqSettings:Password"] ?? "guest",
+			VirtualHost = configuration["RabbitMqSettings:VirtualHost"] ?? "/",
+			RequestedHeartbeat = TimeSpan.FromSeconds(int.Parse(configuration["RabbitMqSettings:Heartbeat"] ?? "60"))
+		};
+
+		return new RabbitMqBusService(factory, logger);
+	}
+
+	private IMessageBusService CreateActiveMqService(IServiceProvider serviceProvider)
+	{
+		var logger = serviceProvider.GetService<ILogger<ActiveMqService>>();
+		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+
+		var brokerUri = configuration["ActiveMqSettings:BrokerUri"] ?? "tcp://localhost:61616";
+
+		return new ActiveMqService(brokerUri, logger);
+	}
+
+	private IMessageBusService CreatePulsarService(IServiceProvider serviceProvider)
+	{
+		var logger = serviceProvider.GetService<ILogger<PulsarService>>();
+		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+
+		return new PulsarService(configuration, logger);
+	}
+
+	private IMessageBusService CreateTarantoolService(IServiceProvider serviceProvider)
+	{
+		var logger = serviceProvider.GetService<ILogger<TarantoolService>>();
+		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+
+		return new TarantoolService(configuration, logger);
+	}
+
+	private IMessageBusService CreateKafkaStreamsService(IServiceProvider serviceProvider)
+	{
+		var logger = serviceProvider.GetService<ILogger<KafkaStreamsService>>();
+		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+
+		return new KafkaStreamsService(configuration, logger);
+	}
+
+	// Методы для динамического переподключения
 
 	public async Task<IMessageBusService> CreateDynamicMessageBusServiceAsync(
 		RabbitMqSettings rabbitSettings = null,
@@ -166,6 +208,7 @@ public class MessageBusServiceFactory : IMessageBusServiceFactory
 	}
 
 	// Приватные методы для создания динамических сервисов
+
 	private async Task<IMessageBusService> CreateDynamicRabbitMqService(RabbitMqSettings settings)
 	{
 		// Создаем RabbitMQ ConnectionFactory напрямую из настроек
@@ -182,7 +225,6 @@ public class MessageBusServiceFactory : IMessageBusServiceFactory
 		using var scope = _serviceScopeFactory.CreateScope();
 		var logger = scope.ServiceProvider.GetService<ILogger<RabbitMqBusService>>();
 
-		// ИСПРАВЛЕНО: правильный порядок параметров (logger, factory)
 		return await Task.FromResult(new RabbitMqBusService(factory, logger));
 	}
 
@@ -241,32 +283,7 @@ public class MessageBusServiceFactory : IMessageBusServiceFactory
 		return await Task.FromResult(new PulsarService(tempConfig, logger));
 	}
 
-	// Существующие методы
-
-	private IMessageBusService CreatePulsarService(IServiceProvider serviceProvider)
-	{
-		// Просто создаем PulsarService - он сам прочитает конфигурацию
-		var logger = serviceProvider.GetService<ILogger<PulsarService>>();
-		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-
-		return new PulsarService(configuration, logger);
-	}
-
-	private IMessageBusService CreateTarantoolService(IServiceProvider serviceProvider)
-	{
-		var logger = serviceProvider.GetService<ILogger<TarantoolService>>();
-		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-
-		return new TarantoolService(configuration, logger);
-	}
-
-	private IMessageBusService CreateKafkaStreamsService(IServiceProvider serviceProvider)
-	{
-		var logger = serviceProvider.GetService<ILogger<KafkaStreamsService>>();
-		var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-
-		return new KafkaStreamsService(configuration, logger);
-	}
+	// Управление типом шины
 
 	public void SetDefaultBusType(string busType)
 	{

@@ -93,7 +93,6 @@ public class ServiceRegistrar
 			services.AddMessageServingServices(configuration);
 			services.AddPostgresDbServices(configuration);
 			services.AddPostgresDbRepositoriesServices(configuration);
-			services.AddMessageServingServices(configuration);
 			services.AddSingleton<IDynamicDatabaseManager, DynamicDatabaseManager>();
 		}
 		catch (Exception ex)

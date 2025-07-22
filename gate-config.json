@@ -1,5 +1,5 @@
 {
-  "Type": "streamonly",  // ✅ restonly(http, https), streamonly(tcp,udp, ws), both
+  "Type": "restonly",  // ✅ restonly(http, https), streamonly(tcp,udp, ws), both
   "CompanyName": "Tomsk",
   "InputChannel": "channel_in",
   "OutputChannel": "channel_out",
@@ -79,8 +79,8 @@
     "TypeToRun": "Tarantool",
     "Host": "localhost",
     "Port": "3301",
-    "Username": "admin",
-    "Password": "admin1",
+    "Username": "",
+    "Password": "",
     "StreamName": "default-stream"
   },
   "KafkaStreamsSettings": {
