@@ -50,8 +50,8 @@ namespace lazy_light_requests_gate.presentation.controllers
 				var previousBusType = _messageBusServiceFactory.GetCurrentBusType();
 
 				// Тестируем подключение к новой шине перед переключением
-				var testBusService = _messageBusServiceFactory.CreateMessageBusService(busType);
-				var connectionTest = await testBusService.TestConnectionAsync();
+				var testCreatedBusService = _messageBusServiceFactory.CreateMessageBusService(busType);
+				var connectionTest = await testCreatedBusService.TestConnectionAsync();
 
 				if (!connectionTest)
 				{

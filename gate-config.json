@@ -1,5 +1,5 @@
 {
-  "Type": "streamonly",  // ✅ restonly, streamonly, both
+  "Type": "streamonly",  // ✅ restonly(http, https), streamonly(tcp,udp, ws), both
   "CompanyName": "Tomsk",
   "InputChannel": "channel_in",
   "OutputChannel": "channel_out",
@@ -13,7 +13,7 @@
   "OutboxMessageTtlSeconds": 10,
   "IncidentEntitiesTtlMonths": 60,
   "Protocol": "tcp",
-  "DataFormat": "json",
+  "DataFormat": "json",// ✅ json, xml, grpc
   "DataOptions": {
     "client": false,
     "server": true,

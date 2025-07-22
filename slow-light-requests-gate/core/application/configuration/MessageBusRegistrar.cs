@@ -42,13 +42,10 @@ namespace lazy_light_requests_gate.core.application.configuration
 		private void RegisterActiveMq(IServiceCollection services, IConfiguration configuration, string timestamp)
 		{
 			Console.WriteLine($"[{timestamp}] [CONFIG] Регистрируется в DI ActiveMQ");
-			services.AddSingleton<IActiveMqService>(sp =>
-			{
-				var serviceUrl = configuration["ActiveMqSettings:BrokerUri"] ?? "tcp://localhost:61616";
-				var logger = sp.GetRequiredService<ILogger<ActiveMqService>>();
-				Console.WriteLine($"[{timestamp}] [CONFIG] ActiveMQ BrokerUri: {serviceUrl}");
-				return new ActiveMqService(serviceUrl, logger);
-			});
+			var serviceUrl = configuration["ActiveMqSettings:BrokerUri"] ?? "tcp://localhost:61616";
+			Console.WriteLine($"[{timestamp}] [CONFIG] ActiveMQ BrokerUri: {serviceUrl}");
+
+			services.AddSingleton<IActiveMqService, ActiveMqService>();
 		}
 
 		private void RegisterKafka(IServiceCollection services, IConfiguration configuration, string timestamp)

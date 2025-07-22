@@ -1,7 +1,8 @@
-﻿using lazy_light_requests_gate.presentation.middleware;
-using Serilog;
+﻿using Serilog;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
-namespace lazy_light_requests_gate.core.application.configuration
+namespace lazy_light_requests_gate.infrastructure.startup
 {
 	public class ApplicationConfigurator
 	{
@@ -9,9 +10,17 @@ namespace lazy_light_requests_gate.core.application.configuration
 		{
 			try
 			{
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Начинаем конфигурацию приложения...");
+
 				ConfigureUrls(app, httpUrl, httpsUrl);
 				ConfigureMiddleware(app);
 				ConfigureRouting(app);
+				DiagnoseRoutes(app);
+
+				// Настраиваем логирование фактических адресов после старта
+				SetupServerAddressesLogging(app);
+
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Конфигурация приложения завершена успешно");
 			}
 			catch (Exception ex)
 			{
@@ -23,34 +32,96 @@ namespace lazy_light_requests_gate.core.application.configuration
 
 		private void ConfigureUrls(WebApplication app, string httpUrl, string httpsUrl)
 		{
-			app.Urls.Add(httpUrl);
-			app.Urls.Add(httpsUrl);
+			//app.Urls.Add(httpUrl);
+			//app.Urls.Add(httpsUrl);
 			Log.Information($"Middleware: шлюз работает на адресах: {httpUrl} и {httpsUrl}");
+			Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] URLs настроены: {httpUrl}, {httpsUrl}");
+		}
+
+		private void SetupServerAddressesLogging(WebApplication app)
+		{
+			try
+			{
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Настройка логирования адресов сервера...");
+
+				var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
+				lifetime.ApplicationStarted.Register(() =>
+				{
+					try
+					{
+						Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] === ПРИЛОЖЕНИЕ ЗАПУЩЕНО ===");
+
+						var server = app.Services.GetService<IServer>();
+						var serverAddressesFeature = server?.Features.Get<IServerAddressesFeature>();
+
+						if (serverAddressesFeature?.Addresses != null && serverAddressesFeature.Addresses.Any())
+						{
+							Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] Фактические адреса сервера:");
+							Log.Information("Фактические адреса сервера:");
+
+							foreach (var address in serverAddressesFeature.Addresses)
+							{
+								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] ├─ Сервер: {address}");
+								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] ├─ Swagger: {address}/swagger");
+								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] └─ API Docs: {address}/swagger/v1/swagger.json");
+								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER]");
+
+								Log.Information($"Сервер слушает: {address}");
+								Log.Information($"Swagger UI доступен: {address}/swagger");
+							}
+
+							Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] ✅ Сервер готов к работе!");
+						}
+						else
+						{
+							Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [WARNING] ⚠️  Не удалось получить фактические адреса сервера");
+							Log.Warning("Не удалось получить фактические адреса сервера через IServerAddressesFeature");
+						}
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] Ошибка логирования адресов при запуске: {ex.Message}");
+						Log.Error(ex, "Ошибка логирования адресов при запуске");
+					}
+				});
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] Ошибка настройки логирования адресов: {ex.Message}");
+				Log.Error(ex, "Ошибка настройки логирования адресов сервера");
+			}
 		}
 
 		private void ConfigureMiddleware(WebApplication app)
 		{
 			try
 			{
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Настройка middleware...");
+
 				// 1. Логирование запросов (первым)
 				app.UseSerilogRequestLogging();
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Serilog middleware добавлен");
 
 				// 2. CORS
 				app.UseCors(cors => cors
 					.AllowAnyOrigin()
 					.AllowAnyMethod()
 					.AllowAnyHeader());
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] CORS middleware добавлен");
 
 				// 3. Аутентификация
 				app.UseAuthentication();
-
-				app.UseMiddleware<ApplicationTypeLoggingMiddleware>();
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Authentication middleware добавлен");
 
 				// 4. Swagger (ВАЖНО: между Authentication и Authorization!)
 				ConfigureSwagger(app);
 
 				// 5. Авторизация (после Swagger!)
 				app.UseAuthorization();
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Authorization middleware добавлен");
+
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Все middleware настроены успешно");
 			}
 			catch (Exception ex)
 			{
@@ -65,13 +136,16 @@ namespace lazy_light_requests_gate.core.application.configuration
 			{
 				// Всегда включаем Swagger (уберем проверку Development для диагностики)
 				app.UseSwagger();
-				app.UseSwaggerUI(c =>
-				{
-					c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dynamic Gate API v1");
-					c.RoutePrefix = string.Empty; // Доступен на корне "/"
-					c.DocumentTitle = "Dynamic Gate API";
-					c.DisplayRequestDuration(); // Показывать время выполнения запросов
-				});
+				app.UseSwaggerUI();
+				//            app.UseSwaggerUI(c =>
+				//{
+				//	c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dynamic Gate API v1");
+				//	c.RoutePrefix = string.Empty; // Доступен на корне "/"
+				//	c.DocumentTitle = "Dynamic Gate API";
+				//	c.DisplayRequestDuration(); // Показывать время выполнения запросов
+				//});
+
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Swagger UI настроен");
 			}
 			catch (Exception ex)
 			{
@@ -85,12 +159,45 @@ namespace lazy_light_requests_gate.core.application.configuration
 		{
 			try
 			{
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Настройка маршрутизации...");
 				app.MapControllers();
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Контроллеры подключены");
 			}
 			catch (Exception ex)
 			{
 				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] Ошибка настройки маршрутизации: {ex.Message}");
 				throw;
+			}
+		}
+
+		private void DiagnoseRoutes(WebApplication app)
+		{
+			try
+			{
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Диагностика маршрутов...");
+				var endpoints = app.Services.GetRequiredService<EndpointDataSource>();
+				int routeCount = 0;
+
+				foreach (var endpoint in endpoints.Endpoints)
+				{
+					if (endpoint is RouteEndpoint routeEndpoint)
+					{
+						Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ROUTE] Найден маршрут: {routeEndpoint.RoutePattern.RawText}");
+						routeCount++;
+					}
+				}
+
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Всего найдено маршрутов: {routeCount}");
+
+				if (routeCount == 0)
+				{
+					Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [WARNING] Маршруты не найдены! Проверьте регистрацию контроллеров.");
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] Ошибка диагностики маршрутов: {ex.Message}");
+				// Не бросаем исключение, это не критично
 			}
 		}
 	}
