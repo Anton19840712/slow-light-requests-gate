@@ -34,7 +34,7 @@ namespace lazy_light_requests_gate.infrastructure.startup
 		{
 			app.Urls.Add(httpUrl);
 			app.Urls.Add(httpsUrl);
-			Log.Information($"Middleware: шлюз работает на адресах: {httpUrl} и {httpsUrl}");
+
 			Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] URLs настроены: {httpUrl}, {httpsUrl}");
 		}
 
@@ -43,53 +43,41 @@ namespace lazy_light_requests_gate.infrastructure.startup
 			try
 			{
 				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [CONFIG] Настройка логирования адресов сервера...");
-
 				var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
-
 				lifetime.ApplicationStarted.Register(() =>
 				{
 					try
 					{
-						Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] === ПРИЛОЖЕНИЕ ЗАПУЩЕНО ===");
-
+						Console.WriteLine();
 						var server = app.Services.GetService<IServer>();
 						var serverAddressesFeature = server?.Features.Get<IServerAddressesFeature>();
-
 						if (serverAddressesFeature?.Addresses != null && serverAddressesFeature.Addresses.Any())
 						{
 							Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] Фактические адреса сервера:");
-							Log.Information("Фактические адреса сервера:");
+							Console.WriteLine();
 
 							foreach (var address in serverAddressesFeature.Addresses)
 							{
 								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] ├─ Сервер: {address}");
 								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] ├─ Swagger: {address}/swagger");
 								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] └─ API Docs: {address}/swagger/v1/swagger.json");
-								Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER]");
-
-								Log.Information($"Сервер слушает: {address}");
-								Log.Information($"Swagger UI доступен: {address}/swagger");
+								Console.WriteLine();
 							}
-
-							Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [SERVER] ✅ Сервер готов к работе!");
 						}
 						else
 						{
-							Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [WARNING] ⚠️  Не удалось получить фактические адреса сервера");
-							Log.Warning("Не удалось получить фактические адреса сервера через IServerAddressesFeature");
+							Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [WARNING] Не удалось получить фактические адреса сервера");
 						}
 					}
 					catch (Exception ex)
 					{
 						Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] Ошибка логирования адресов при запуске: {ex.Message}");
-						Log.Error(ex, "Ошибка логирования адресов при запуске");
 					}
 				});
 			}
 			catch (Exception ex)
 			{
 				Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [ERROR] Ошибка настройки логирования адресов: {ex.Message}");
-				Log.Error(ex, "Ошибка настройки логирования адресов сервера");
 			}
 		}
 
